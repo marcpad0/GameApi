@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Briscola Multiplayer – GameApi</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold:   #e8b84b;
+      --red:    #c0392b;
+      --blue:   #2980b9;
+      --green:  #1a6b3a;
+      --felt:   #0d5c32;
+      --dark:   #111;
+      --light:  #f5f0e8;
+      --card-w: 72px;
+      --card-h: 108px;
+    }
+    body {
+      font-family: 'Georgia', serif;
+      background: #0a0a0a;
+      color: var(--light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      background: linear-gradient(135deg, #1a0a00, #3a1a00);
+      border-bottom: 3px solid var(--gold);
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 2rem; color: var(--gold); letter-spacing: 3px; text-shadow: 0 2px 8px #000; }
+    header .hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    header small { color: #aaa; font-size: .78rem; }
+
+    /* ── Screens ── */
+    .screen { display: none; width: 100%; max-width: 860px; padding: 20px; }
+    .screen.active { display: block; }
+
+    /* ── Panel ── */
+    .panel {
+      background: linear-gradient(160deg, #1c1c1c, #111);
+      border: 1px solid #444; border-radius: 12px;
+      padding: 22px; margin: 18px 0;
+    }
+    h2 { font-size: 1.4rem; color: var(--gold); margin-bottom: .9rem; }
+    h3 { color: var(--gold); margin-bottom: .5rem; }
+
+    /* ── Inputs ── */
+    input[type=text] {
+      background: #222; border: 1px solid #555; border-radius: 6px;
+      color: var(--light); padding: 10px 14px; font-size: 1rem; width: 100%;
+    }
+    input[type=text]:focus { outline: none; border-color: var(--gold); }
+    input[readonly] { opacity: .7; cursor: text; }
+
+    /* ── Buttons ── */
+    button {
+      cursor: pointer; border: none; border-radius: 8px;
+      font-size: .93rem; font-weight: bold; padding: 10px 20px;
+      transition: transform .1s, opacity .2s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-gold  { background: var(--gold); color: #111; }
+    .btn-red   { background: var(--red);  color: #fff; }
+    .btn-blue  { background: var(--blue); color: #fff; }
+    .btn-green { background: #217a45;     color: #fff; }
+    .btn-dark  { background: #333; color: var(--light); border: 1px solid #555; }
+
+    .row  { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .col  { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    label { font-size: .85rem; color: #aaa; }
+    .mt1  { margin-top: 12px; }
+    .mt2  { margin-top: 20px; }
+    hr    { border-color: #333; margin: 20px 0; }
+
+    /* ── Invite box ── */
+    .invite-box {
+      background: #0d2a0d; border: 2px solid #2a8a4a;
+      border-radius: 10px; padding: 16px;
+    }
+    .invite-box p { color: #aaa; font-size: .88rem; margin-bottom: 10px; }
+    .link-row { display: flex; gap: 8px; }
+    .link-row input { font-size: .78rem; background: #0a1a0a; border-color: #2a8a4a; }
+
+    /* ── Games list ── */
+    .game-card {
+      background: #1c1c1c; border: 1px solid #444; border-radius: 10px;
+      padding: 14px 18px; margin: 8px 0;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .game-card .name { font-size: 1.05rem; color: var(--gold); }
+    .game-card .meta { font-size: .78rem; color: #888; margin-top: 3px; }
+    .game-card .btns { display: flex; gap: 8px; }
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      font-size: .73rem; font-weight: bold;
+    }
+    .badge-active   { background: #1a6b3a; color: #a0ffb8; }
+    .badge-finished { background: #555;    color: #ccc; }
+
+    /* ── Board ── */
+    #board-wrap {
+      width: 100%; max-width: 940px; padding: 10px 16px 20px;
+      display: none; flex-direction: column; gap: 12px;
+    }
+    #board-wrap.active { display: flex; }
+
+    .zone {
+      background: var(--felt); border: 2px solid #2a8a4a;
+      border-radius: 14px; padding: 12px 16px;
+    }
+    .zone.mine      { border-color: var(--gold); background: #0c3d1e; }
+    .zone.waiting   { opacity: .55; }
+
+    .player-label {
+      font-size: .88rem; font-weight: bold; color: var(--gold);
+      margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #555; display: inline-block; flex-shrink: 0;
+    }
+    .dot.on  { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse 1.4s infinite; }
+    .dot.me  { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Centre ── */
+    .board-center {
+      background: #0f3d20; border: 2px solid #2a8a4a;
+      border-radius: 14px; padding: 14px 18px;
+      display: flex; gap: 16px; align-items: center;
+      justify-content: space-between; flex-wrap: wrap;
+    }
+    .deck-stack { position: relative; width: var(--card-w); height: var(--card-h); }
+    .score-area { display: flex; gap: 16px; }
+    .score-box  {
+      background: #0a2a14; border: 1px solid #2a8a4a;
+      border-radius: 8px; padding: 8px 14px; text-align: center; min-width: 68px;
+    }
+    .score-box .pts { font-size: 1.6rem; font-weight: bold; color: var(--gold); }
+    .score-box .lbl { font-size: .72rem; color: #aaa; }
+    .trick-area { display: flex; gap: 14px; align-items: center; flex: 1; justify-content: center; }
+
+    /* ── Cards ── */
+    .hand { display: flex; gap: 10px; flex-wrap: wrap; min-height: calc(var(--card-h) + 4px); }
+    .card {
+      width: var(--card-w); height: var(--card-h);
+      border-radius: 8px; border: 2px solid #bbb;
+      background: #c8a96e; overflow: hidden;
+      user-select: none; position: relative;
+      transition: transform .15s, box-shadow .15s;
+      cursor: default; flex-shrink: 0;
+    }
+    .card img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 6px; }
+    .card.playable { cursor: pointer; border-color: var(--gold); }
+    .card.playable:hover { transform: translateY(-14px); box-shadow: 0 12px 28px rgba(232,184,75,.65); }
+    .card.played   { opacity: .85; transform: rotate(-2deg) scale(1.04); }
+    .card.briscola-highlight { border-color: #f39c12; box-shadow: 0 0 14px #f39c12bb; }
+    .card-back {
+      background: repeating-linear-gradient(45deg,#8b0000 0,#8b0000 5px,#c0392b 5px,#c0392b 10px);
+      border: 3px solid #fff; cursor: default;
+    }
+    .card-back::after { content:''; position:absolute; inset:6px; border:2px solid rgba(255,255,255,.4); border-radius:4px; }
+    .card-ph { width:var(--card-w); height:var(--card-h); border-radius:8px; border:2px dashed #555; background:transparent; flex-shrink:0; }
+    .card-ph.green { border-color: #1a5a2a; background: rgba(255,255,255,.03); }
+
+    /* ── Controls ── */
+    #ctrl-bar {
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+      background: #111; border: 1px solid #333; border-radius: 10px;
+      padding: 10px 16px;
+    }
+    #status-msg { flex: 1; font-size: .97rem; color: #ddd; text-align: center; }
+
+    /* ── Polling indicator ── */
+    #poll-ind {
+      font-size: .75rem; color: #666; display: flex; align-items: center; gap: 5px;
+    }
+    #poll-ind .spinner { width: 10px; height: 10px; border-width: 1.5px; }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #444; border-top-color: var(--gold);
+      border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Log ── */
+    #moves-log {
+      background: #111; border: 1px solid #2a3a2a; border-radius: 10px;
+      padding: 10px; max-height: 160px; overflow-y: auto; font-size: .78rem; color: #999;
+    }
+    .log-entry { padding: 2px 0; border-bottom: 1px solid #1a2a1a; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry.mine { color: var(--gold); }
+
+    /* ── Winner modal ── */
+    #winner-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.88); z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    #winner-overlay.show { display: flex; }
+    #winner-box {
+      background: linear-gradient(160deg,#1c1c1c,#111);
+      border: 3px solid var(--gold); border-radius: 16px;
+      padding: 40px; text-align: center; max-width: 420px; width: 90%;
+    }
+    #winner-box h2 { font-size: 2rem; margin-bottom: 14px; }
+    #winner-box .final-scores { display: flex; gap: 20px; justify-content: center; margin: 20px 0; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #222; border: 1px solid var(--gold);
+      border-radius: 8px; padding: 12px 20px;
+      max-width: 320px; font-size: .9rem;
+      opacity: 0; pointer-events: none; transition: opacity .4s; z-index: 999;
+    }
+    #toast.show      { opacity: 1; }
+    #toast.show.err  { border-color: var(--red); color: #ff9999; }
+    #toast.show.ok   { border-color: #2ecc71; color: #90ee90; }
+    #toast.show.info { border-color: #aaa; color: #eee; }
+
+    @media (max-width: 580px) {
+      :root { --card-w: 56px; --card-h: 84px; }
+      header h1 { font-size: 1.4rem; }
+      .board-center { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>♠ BRISCOLA ♥</h1>
+  <div class="hdr-right">
+    <small id="hdr-user">—</small>
+    <small id="hdr-game" style="color:#555;"></small>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: AUTH
+══════════════════════════════════════════════ -->
+<div id="screen-auth" class="screen active" style="max-width:480px;">
+  <div class="panel">
+    <h2>🔑 Accesso</h2>
+    <p style="color:#aaa;font-size:.88rem;margin-bottom:16px;">
+      Registrati con un username per ottenere la tua API Key,
+      oppure incolla una chiave già esistente.
+    </p>
+    <div class="col">
+      <label>Username (nuovo utente)</label>
+      <input type="text" id="inp-username" placeholder="es. mario_rossi" />
+    </div>
+    <div class="row mt1">
+      <button class="btn-gold" onclick="doRegister()">Registrati &amp; Ottieni API Key</button>
+    </div>
+    <hr />
+    <div class="col">
+      <label>Oppure USA una API Key esistente</label>
+      <input type="text" id="inp-apikey" placeholder="xxxxxxxx-xxxx-xxxx-…" />
+    </div>
+    <div class="row mt1">
+      <button class="btn-blue" onclick="doLoginWithKey()">Entra con API Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: LOBBY
+══════════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <!-- Crea nuova partita -->
+  <div class="panel">
+    <h2>🎮 Nuova Partita</h2>
+    <div class="row">
+      <div class="col">
+        <label>Il tuo nome nel gioco</label>
+        <input type="text" id="inp-p1" placeholder="Giocatore 1" value="Giocatore 1" />
+      </div>
+      <button class="btn-gold" onclick="createGame()">Crea partita</button>
+    </div>
+
+    <!-- Invite box – appare dopo creazione -->
+    <div id="invite-box" class="invite-box mt2" style="display:none;">
+      <h3 style="color:#2ecc71;margin-bottom:8px;">✅ Partita creata!</h3>
+      <p>Manda questo link al tuo avversario. Quando entra la partita inizia automaticamente.</p>
+      <div class="link-row">
+        <input type="text" id="invite-link" readonly />
+        <button class="btn-green" onclick="copyInvite()">📋 Copia</button>
+      </div>
+      <div class="row mt1">
+        <button class="btn-gold" onclick="enterAsP1()">▶ Gioca ora come Giocatore 1</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Join con link / game ID -->
+  <div class="panel">
+    <h2>🔗 Unisciti a una partita</h2>
+    <p style="color:#aaa;font-size:.88rem;margin-bottom:12px;">
+      Se hai ricevuto un link di invito, aprilo direttamente nel browser.
+      Altrimenti incolla qui il Game ID.
+    </p>
+    <div class="row">
+      <div class="col">
+        <label>Game ID</label>
+        <input type="text" id="inp-join-id" placeholder="xxxxxxxx-xxxx-…" />
+      </div>
+      <button class="btn-blue" onclick="joinByGameId()">Unisciti</button>
+    </div>
+  </div>
+
+  <!-- Lista partite -->
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;">📋 Le tue partite</h2>
+      <button class="btn-dark" onclick="loadGames()">↻ Aggiorna</button>
+    </div>
+    <div id="games-list" class="mt1"><span class="spinner"></span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: GIOCO
+══════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+  <div id="ctrl-bar">
+    <button class="btn-dark" onclick="goLobby()">← Lobby</button>
+    <span id="status-msg">—</span>
+    <span id="poll-ind" style="display:none;">
+      <span class="spinner"></span> <span id="poll-txt">attesa avversario…</span>
+    </span>
+    <button class="btn-red"  onclick="abandonGame()">Abbandona</button>
+  </div>
+</div>
+
+<!-- Board (fuori .screen per dimensioni full-width) -->
+<div id="board-wrap">
+  <!-- Avversario -->
+  <div class="zone" id="zone-opp">
+    <div class="player-label">
+      <span class="dot" id="dot-opp"></span>
+      <span id="lbl-opp">Avversario</span>
+      <span style="margin-left:auto;font-size:.8rem;color:#888;" id="cnt-opp">3</span>
+    </div>
+    <div class="hand" id="hand-opp"></div>
+  </div>
+
+  <!-- Centro -->
+  <div class="board-center">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <div class="deck-stack" id="deck-viz"></div>
+      <small id="deck-cnt" style="color:#aaa;"></small>
+      <small style="color:#666;font-size:.72rem;">MAZZO</small>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <small style="color:#666;font-size:.72rem;">TAVOLO</small>
+      <div class="trick-area" id="trick-area"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <small style="color:#666;font-size:.72rem;">PUNTEGGI</small>
+      <div class="score-area">
+        <div class="score-box">
+          <div class="pts" id="sc-me">0</div>
+          <div class="lbl" id="sc-lbl-me">Tu</div>
+        </div>
+        <div class="score-box">
+          <div class="pts" id="sc-opp">0</div>
+          <div class="lbl" id="sc-lbl-opp">Avversario</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mia mano -->
+  <div class="zone mine" id="zone-me">
+    <div class="player-label">
+      <span class="dot me" id="dot-me"></span>
+      <span id="lbl-me">Tu</span>
+      <span style="margin-left:auto;font-size:.8rem;color:#888;" id="cnt-me">3</span>
+    </div>
+    <div class="hand" id="hand-me"></div>
+  </div>
+
+  <!-- Log mosse -->
+  <div>
+    <h3 style="font-size:.85rem;margin-bottom:5px;">📜 Mosse</h3>
+    <div id="moves-log"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ WINNER MODAL -->
+<div id="winner-overlay">
+  <div id="winner-box">
+    <div style="font-size:3rem;" id="w-emoji">🏆</div>
+    <h2 id="w-title">Fine partita!</h2>
+    <p id="w-msg" style="color:#ccc;"></p>
+    <div class="final-scores">
+      <div class="score-box"><div class="pts" id="w-sc-me">0</div><div class="lbl" id="w-lbl-me">Tu</div></div>
+      <div class="score-box"><div class="pts" id="w-sc-opp">0</div><div class="lbl" id="w-lbl-opp">Avversario</div></div>
+    </div>
+    <div class="row" style="justify-content:center;gap:12px;">
+      <button class="btn-gold" onclick="goLobby()">Torna alla lobby</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ── Briscola Rules ─────────────────────────────── */
+const SUITS      = ['bastoni','coppe','denari','spade'];
+const RANKS      = ['as','2','3','4','5','6','7','fante','cavallo','re'];
+const SUIT_ICON  = {bastoni:'🪄',coppe:'🏆',denari:'🪙',spade:'⚔️'};
+const RANK_LABEL = {as:'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7',fante:'F',cavallo:'C',re:'R'};
+const POINTS     = {as:11,'3':10,re:4,cavallo:3,fante:2,'2':0,'4':0,'5':0,'6':0,'7':0};
+const POWER      = {as:9,'3':8,re:7,cavallo:6,fante:5,'7':4,'6':3,'5':2,'4':1,'2':0};
+
+function buildDeck() {
+  const d = [];
+  for (const s of SUITS) for (const r of RANKS) d.push({suit:s,rank:r});
+  return shuffle(d);
+}
+function shuffle(a) {
+  for (let i=a.length-1;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function cardPts(c) { return POINTS[c.rank]||0; }
+function lbl(c)     { return `${RANK_LABEL[c.rank]}${SUIT_ICON[c.suit]}`; }
+
+// Returns index of trick winner (0 = first player, 1 = second)
+function trickWinner(c1,c2,leadSuit,bSuit){
+  function score(c){ return c.suit===bSuit?100+POWER[c.rank]:c.suit===leadSuit?POWER[c.rank]:-1; }
+  return score(c2)>score(c1)?1:0;
+}
+
+function initState(p1id, p2id){
+  const deck=buildDeck();
+  return {
+    v:1,
+    deck,
+    hands:    {[p1id]:deck.splice(0,3),[p2id]:deck.splice(0,3)},
+    briscola: deck[deck.length-1],
+    trick:    [],   // [{pid,card}]
+    scores:   {[p1id]:0,[p2id]:0},
+    captured: {[p1id]:[],[p2id]:[]},
+    current:  p1id,
+    lead:     null,
+    phase:    'playing',
+    winner:   null,  // pid | 'draw' | null
+    round:    0
+  };
+}
+
+/* ── App State ──────────────────────────────────── */
+let apiKey   = localStorage.getItem('bris_key')  || '';
+let myName   = localStorage.getItem('bris_name') || 'Giocatore';
+let gameId   = null;
+let myPid    = null;  // player ID in THIS game
+let oppPid   = null;
+let myRole   = null;  // 'p1' | 'p2'
+let gs       = null;  // game state
+let pollTimer= null;
+let posting  = false;
+
+// Pending invite (set after createGame, before enterAsP1)
+let pendingInvite = null; // {gameId, p1id, p2id, apiKey}
+
+/* ── API ─────────────────────────────────────────── */
+async function api(method, path, body, key){
+  const k = key || apiKey;
+  const opts = { method, headers:{'Content-Type':'application/json','X-API-Key':k} };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error||`HTTP ${r.status}`);
+  return j;
+}
+
+/* ── Toast ───────────────────────────────────────── */
+let _tt;
+function toast(msg,type='info'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`show ${type}`;
+  clearTimeout(_tt); _tt=setTimeout(()=>t.className='',3400);
+}
+
+/* ── Screens ──────────────────────────────────────── */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  const bw=document.getElementById('board-wrap');
+  bw.classList.toggle('active', id==='game');
+  if(id!=='game') stopPoll();
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+/* ── AUTH ─────────────────────────────────────────── */
+async function doRegister(){
+  const u = document.getElementById('inp-username').value.trim();
+  if(!u){ toast('Inserisci un username','err'); return; }
+  try{
+    const d = await api('POST','/auth/register',{username:u});
+    apiKey  = d.user.apiKey;
+    myName  = d.user.username;
+    localStorage.setItem('bris_key',  apiKey);
+    localStorage.setItem('bris_name', myName);
+    afterLogin();
+    toast(`Benvenuto ${myName}! 🎉`,'ok');
+  }catch(e){ toast(e.message,'err'); }
+}
+
+function doLoginWithKey(){
+  const k = document.getElementById('inp-apikey').value.trim();
+  if(!k){ toast('Incolla la tua API Key','err'); return; }
+  apiKey = k;
+  localStorage.setItem('bris_key', k);
+  afterLogin();
+}
+
+function afterLogin(){
+  document.getElementById('hdr-user').textContent = `🔑 ${myName}`;
+  // Check URL params → auto-join as p2
+  const params = new URLSearchParams(location.search);
+  if(params.get('join') && params.get('as')==='p2'){
+    autoJoinAsP2(params);
+  } else {
+    showScreen('lobby');
+    loadGames();
+  }
+}
+
+window.addEventListener('load', ()=>{
+  // Pre-fill API key if stored
+  if(apiKey) document.getElementById('inp-apikey').value = apiKey;
+  // Auto-join flow from invite link
+  const params = new URLSearchParams(location.search);
+  if(params.get('join') && params.get('as')==='p2'){
+    // Show auth screen first so user logs in / registers
+    // If already have key, proceed directly
+    if(apiKey){
+      afterLogin();
+    } else {
+      toast('Accedi o registrati per unirti alla partita','info');
+    }
+    return;
+  }
+  if(apiKey){ afterLogin(); }
+});
+
+/* ── CREATE GAME ─────────────────────────────────── */
+async function createGame(){
+  const name = document.getElementById('inp-p1').value.trim() || myName;
+  try{
+    // 1. Create game
+    const gd = await api('POST','/games',{name:`[Briscola] ${name} vs ???`});
+    const gid = gd.game.id;
+
+    // 2. Add Player 1 (me)
+    const r1 = await api('POST',`/games/${gid}/players`,{name});
+    // 3. Add Player 2 placeholder
+    const r2 = await api('POST',`/games/${gid}/players`,{name:'In attesa…'});
+
+    // 4. Init game state, persist
+    const st = initState(r1.player.id, r2.player.id);
+    await api('POST',`/games/${gid}/moves`,{
+      playerId: r1.player.id,
+      data: { type:'init', description:'Partita creata', state: st }
+    });
+
+    pendingInvite = {gameId:gid, p1id:r1.player.id, p2id:r2.player.id, apiKey};
+
+    // Build invite link
+    const base = `${location.origin}${location.pathname}`;
+    const link = `${base}?join=${gid}&p1id=${r1.player.id}&p2id=${r2.player.id}&key=${apiKey}&as=p2`;
+    document.getElementById('invite-link').value = link;
+    document.getElementById('invite-box').style.display = 'block';
+    toast('Partita creata! Copia il link per invitare l\'avversario.','ok');
+  }catch(e){ toast(e.message,'err'); console.error(e); }
+}
+
+function copyInvite(){
+  const inp = document.getElementById('invite-link');
+  navigator.clipboard.writeText(inp.value).then(()=>toast('Link copiato! ✅','ok'))
+    .catch(()=>{ inp.select(); document.execCommand('copy'); toast('Link copiato!','ok'); });
+}
+
+function enterAsP1(){
+  if(!pendingInvite){ toast('Prima crea una partita','err'); return; }
+  const {gameId:gid, p1id, p2id} = pendingInvite;
+  startGameSession(gid, p1id, p2id, 'p1');
+}
+
+/* ── JOIN AS P2 from URL ─────────────────────────── */
+async function autoJoinAsP2(params){
+  const gid   = params.get('join');
+  const p1id  = params.get('p1id');
+  const p2id  = params.get('p2id');
+  const key   = params.get('key');
+
+  if(!gid||!p1id||!p2id||!key){ toast('Link di invito non valido','err'); showScreen('lobby'); return; }
+
+  // Use the owner's key for API calls (required by backend permissions)
+  apiKey = key;
+  localStorage.setItem('bris_key', key);
+
+  // Update p2 player name
+  try{
+    // Patch game name with p2's name
+    await api('PUT',`/games/${gid}`,{name:`[Briscola] ??? vs ${myName}`}, key);
+  }catch(_){}
+
+  toast(`Unito alla partita come ${myName}!`,'ok');
+  startGameSession(gid, p2id, p1id, 'p2');
+  // Clean URL
+  history.replaceState({},'',location.pathname);
+}
+
+/* ── JOIN BY GAME ID (manual) ────────────────────── */
+async function joinByGameId(){
+  const gid = document.getElementById('inp-join-id').value.trim();
+  if(!gid){ toast('Inserisci un Game ID','err'); return; }
+  try{
+    const gd = await api('GET',`/games/${gid}`);
+    const g  = gd.game;
+    if(g.players.length < 2){ toast('Partita non ancora pronta (< 2 giocatori)','err'); return; }
+    // Prompt which player to be
+    const choice = prompt(`Chi sei?\n1 = ${g.players[0].name}\n2 = ${g.players[1].name}`);
+    if(!choice) return;
+    const me  = choice==='1' ? g.players[0] : g.players[1];
+    const opp = choice==='1' ? g.players[1] : g.players[0];
+    startGameSession(gid, me.id, opp.id, choice==='1'?'p1':'p2');
+  }catch(e){ toast(e.message,'err'); }
+}
+
+/* ── LOAD GAMES (lobby list) ──────────────────────── */
+async function loadGames(){
+  const el = document.getElementById('games-list');
+  el.innerHTML='<span class="spinner"></span>';
+  try{
+    const d = await api('GET','/games');
+    if(!d.games.length){ el.innerHTML='<em style="color:#666">Nessuna partita.</em>'; return; }
+    d.games.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    el.innerHTML='';
+    for(const g of d.games){
+      const div=document.createElement('div'); div.className='game-card';
+      div.innerHTML=`
+        <div>
+          <div class="name">${esc(g.name)}</div>
+          <div class="meta">ID: ${g.id.slice(0,10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${g.players.length} | 🃏 ${g.moves.length} mosse</div>
+        </div>
+        <div class="btns">
+          <span class="badge badge-${g.status==='active'?'active':'finished'}">${g.status==='active'?'In corso':'Finita'}</span>
+          ${g.name.startsWith('[Briscola]')&&g.players.length>=2
+            ? `<button class="btn-green" onclick="resumeGame('${g.id}')">▶ Riprendi</button>` : ''}
+          <button class="btn-red" onclick="deleteGame('${g.id}')">🗑</button>
+        </div>`;
+      el.appendChild(div);
+    }
+  }catch(e){ el.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+}
+
+async function deleteGame(gid){
+  if(!confirm('Eliminare questa partita?')) return;
+  try{ await api('DELETE',`/games/${gid}`); toast('Eliminata','ok'); loadGames(); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+async function resumeGame(gid){
+  try{
+    const gd=await api('GET',`/games/${gid}`);
+    if(gd.game.players.length<2){ toast('Partita incompleta','err'); return; }
+    const choice=prompt(`Chi sei?\n1 = ${gd.game.players[0].name}\n2 = ${gd.game.players[1].name}`);
+    if(!choice) return;
+    const me  = choice==='1'?gd.game.players[0]:gd.game.players[1];
+    const opp = choice==='1'?gd.game.players[1]:gd.game.players[0];
+    startGameSession(gid, me.id, opp.id, choice==='1'?'p1':'p2');
+  }catch(e){ toast(e.message,'err'); }
+}
+
+/* ── START GAME SESSION ──────────────────────────── */
+async function startGameSession(gid, myPidVal, oppPidVal, role){
+  gameId  = gid;
+  myPid   = myPidVal;
+  oppPid  = oppPidVal;
+  myRole  = role;
+  posting = false;
+
+  document.getElementById('hdr-game').textContent = `Partita: ${gid.slice(0,10)}…`;
+
+  // Load latest state
+  const ok = await syncState();
+  if(!ok) return;
+
+  showScreen('game');
+  renderBoard();
+  startPoll();
+  if(gs.phase==='finished') { stopPoll(); showWinner(); }
+}
+
+/* ── SYNC STATE (fetch latest move) ─────────────── */
+async function syncState(){
+  try{
+    const md = await api('GET',`/games/${gameId}/moves`);
+    if(!md.moves.length){ toast('Stato partita non trovato','err'); return false; }
+    md.moves.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const last=md.moves[md.moves.length-1];
+    if(!last.data?.state){ toast('Stato non valido','err'); return false; }
+    gs = last.data.state;
+    renderMovesLog(md.moves);
+    return true;
+  }catch(e){ toast(e.message,'err'); return false; }
+}
+
+/* ── POLLING ─────────────────────────────────────── */
+function startPoll(){
+  stopPoll();
+  document.getElementById('poll-ind').style.display =
+    isMyTurn() ? 'none' : 'flex';
+  pollTimer = setInterval(pollOnce, 2500);
+}
+function stopPoll(){
+  clearInterval(pollTimer); pollTimer=null;
+  document.getElementById('poll-ind').style.display='none';
+}
+
+async function pollOnce(){
+  if(posting) return; // don't poll while we're writing
+  const prevCurrent = gs?.current;
+  const prevTrick   = gs?.trick?.length;
+  const prevPhase   = gs?.phase;
+  const synced = await syncState();
+  if(!synced) return;
+  renderBoard();
+  if(gs.phase==='finished' && prevPhase!=='finished'){
+    stopPoll(); showWinner(); return;
+  }
+  // Notify if something changed
+  if(gs.current !== prevCurrent || gs.trick?.length !== prevTrick){
+    if(isMyTurn()) {
+      toast('È il tuo turno! 🎴','ok');
+      document.getElementById('poll-ind').style.display='none';
+    } else {
+      document.getElementById('poll-ind').style.display='flex';
+    }
+  }
+}
+
+function isMyTurn(){ return gs && gs.current===myPid && gs.phase==='playing'; }
+
+/* ── PLAY CARD ──────────────────────────────────── */
+async function playCard(card){
+  if(posting){ toast('Attendere…','info'); return; }
+  if(!isMyTurn()){ toast('Non è il tuo turno!','err'); return; }
+  posting=true;
+  stopPoll();
+
+  // Remove card from hand
+  const hand=gs.hands[myPid];
+  const idx=hand.findIndex(c=>c.suit===card.suit&&c.rank===card.rank);
+  if(idx===-1){ posting=false; startPoll(); return; }
+  hand.splice(idx,1);
+  gs.trick.push({pid:myPid, card});
+
+  let desc = `${pname(myPid)} gioca ${lbl(card)}`;
+
+  if(gs.trick.length===1){
+    // Primo a giocare – aspetta avversario
+    gs.lead   = myPid;
+    gs.current= oppPid;
+    await persist('play',desc);
+  } else {
+    // Secondo a giocare – risolvi trick
+    const t  = gs.trick;
+    const w  = trickWinner(t[0].card, t[1].card, t[0].card.suit, gs.briscola.suit);
+    const winnerPid  = t[w].pid;
+    const loserPid   = t[1-w].pid;
+    const pts = cardPts(t[0].card)+cardPts(t[1].card);
+
+    gs.scores[winnerPid]  = (gs.scores[winnerPid]||0)+pts;
+    gs.captured[winnerPid]=[...(gs.captured[winnerPid]||[]),t[0].card,t[1].card];
+
+    // Draw (winner first)
+    if(gs.deck.length) gs.hands[winnerPid].push(gs.deck.shift());
+    if(gs.deck.length) gs.hands[loserPid].push(gs.deck.shift());
+
+    gs.trick   = [];
+    gs.current = winnerPid;
+    gs.lead    = null;
+    gs.round++;
+
+    desc += ` → ${pname(winnerPid)} vince il trick (${pts} pt)`;
+
+    if(!gs.hands[myPid].length && !gs.hands[oppPid].length && !gs.deck.length){
+      gs.phase='finished';
+      const sm=gs.scores[myPid]||0, so=gs.scores[oppPid]||0;
+      gs.winner = sm>so?myPid:so>sm?oppPid:'draw';
+    }
+
+    await persist('trick',desc);
+
+    if(gs.phase==='finished'){
+      try{ await api('PUT',`/games/${gameId}`,{status:'finished'}); }catch(_){}
+    }
+  }
+
+  posting=false;
+  renderBoard();
+  if(gs.phase==='finished'){ stopPoll(); showWinner(); return; }
+  startPoll();
+}
+
+async function persist(type, description){
+  await api('POST',`/games/${gameId}/moves`,{
+    playerId: myPid,
+    data: { type, description, state: gs }
+  });
+}
+
+function otherOf(pid){ return pid===myPid?oppPid:myPid; }
+function pname(pid){
+  if(!gs) return pid;
+  return pid===myPid ? document.getElementById('lbl-me').textContent
+                     : document.getElementById('lbl-opp').textContent;
+}
+
+/* ── RENDER ──────────────────────────────────────── */
+function renderBoard(){
+  if(!gs) return;
+
+  // Fetch player names from game state keys (display)
+  // We'll use labels from DOM (set once at startGame)
+  const myLabel  = myRole==='p1' ? 'Giocatore 1' : 'Giocatore 2';
+  const oppLabel = myRole==='p1' ? 'Giocatore 2' : 'Giocatore 1';
+
+  // Try to get real names from API game data if available
+  // (We set them via the invite flow – just use myName here)
+  document.getElementById('lbl-me').textContent  = myName;
+  document.getElementById('lbl-opp').textContent = myRole==='p1'?'Avversario':'Avversario';
+  document.getElementById('sc-lbl-me').textContent  = myName;
+  document.getElementById('sc-lbl-opp').textContent = 'Avversario';
+
+  // Scores
+  document.getElementById('sc-me').textContent  = gs.scores[myPid]||0;
+  document.getElementById('sc-opp').textContent = gs.scores[oppPid]||0;
+
+  // Counts
+  document.getElementById('cnt-me').textContent  = `${(gs.hands[myPid]||[]).length} carte`;
+  document.getElementById('cnt-opp').textContent = `${(gs.hands[oppPid]||[]).length} carte`;
+
+  // Active dots
+  const myTurn  = gs.current===myPid  && gs.phase==='playing';
+  const oppTurn = gs.current===oppPid && gs.phase==='playing';
+  document.getElementById('dot-me').classList.toggle('on', myTurn);
+  document.getElementById('dot-opp').classList.toggle('on', oppTurn);
+  document.getElementById('zone-me').classList.toggle('waiting', !myTurn && gs.phase==='playing');
+
+  // My hand (face-up, playable if my turn)
+  renderHand('hand-me', gs.hands[myPid]||[], myTurn);
+  // Opponent hand (face-down)
+  renderHandBack('hand-opp', (gs.hands[oppPid]||[]).length);
+
+  // Deck
+  const dvz=document.getElementById('deck-viz');
+  dvz.innerHTML='';
+  if(gs.deck.length>0){
+    const back=mkBack();
+    back.style.cssText='position:absolute;top:0;left:0;z-index:2;';
+    const bc=mkCard(gs.briscola,false);
+    bc.classList.add('briscola-highlight');
+    bc.style.cssText='position:absolute;bottom:0;left:18px;transform:rotate(90deg) translateY(50%);z-index:1;';
+    dvz.appendChild(back); dvz.appendChild(bc);
+  } else {
+    const ph=document.createElement('div'); ph.className='card-ph green'; dvz.appendChild(ph);
+  }
+  document.getElementById('deck-cnt').textContent=`${gs.deck.length} rimaste`;
+
+  // Trick
+  const ta=document.getElementById('trick-area');
+  ta.innerHTML='';
+  if(!gs.trick.length){
+    ta.appendChild(mkPh()); ta.appendChild(mkPh());
+  } else {
+    for(const t of gs.trick){
+      const w=document.createElement('div');
+      w.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;';
+      const nm=document.createElement('small');
+      nm.style.cssText='color:#aaa;font-size:.7rem;';
+      nm.textContent = t.pid===myPid?myName:'Avversario';
+      w.appendChild(mkCard(t.card,false,true));
+      w.appendChild(nm);
+      ta.appendChild(w);
+    }
+  }
+
+  // Status
+  updateStatus();
+}
+
+function renderHand(elId, cards, playable){
+  const el=document.getElementById(elId); el.innerHTML='';
+  if(!cards.length){ el.innerHTML='<em style="color:#555;font-size:.8rem">—</em>'; return; }
+  for(const c of cards){
+    const cd=mkCard(c, playable);
+    if(playable) cd.addEventListener('click',()=>playCard(c));
+    el.appendChild(cd);
+  }
+}
+function renderHandBack(elId, count){
+  const el=document.getElementById(elId); el.innerHTML='';
+  for(let i=0;i<count;i++) el.appendChild(mkBack());
+}
+
+const RANK_FILE = {as:'asso','2':'due','3':'tre','4':'quattro','5':'cinque','6':'sei','7':'sette',fante:'fante',cavallo:'cavallo',re:'re'};
+function cardSrc(c){ return `/cards/${RANK_FILE[c.rank]}_${c.suit}.jpg`; }
+
+function mkCard(c, playable, played){
+  const d=document.createElement('div');
+  d.className=`card${playable?' playable':''}${played?' played':''}`;
+  const img=document.createElement('img');
+  img.src=cardSrc(c);
+  img.alt=`${RANK_LABEL[c.rank]} di ${c.suit}`;
+  img.draggable=false;
+  d.appendChild(img);
+  d.title=`${RANK_LABEL[c.rank]} di ${c.suit} (${POINTS[c.rank]||0} pt)`;
+  return d;
+}
+function mkBack(){
+  const d=document.createElement('div'); d.className='card card-back'; return d;
+}
+function mkPh(){
+  const d=document.createElement('div'); d.className='card-ph'; return d;
+}
+
+function updateStatus(){
+  if(!gs) return;
+  let msg='';
+  const poll=document.getElementById('poll-ind');
+  if(gs.phase==='finished'){
+    msg='🏁 Partita terminata!'; poll.style.display='none';
+  } else if(isMyTurn()){
+    msg=gs.trick.length===1
+      ? '🎴 Rispondi alla carta giocata!'
+      : '🎴 <strong>Tocca a te!</strong> Scegli una carta.';
+    poll.style.display='none';
+  } else {
+    msg='⏳ In attesa della mossa dell\'avversario…';
+    poll.style.display='flex';
+  }
+  document.getElementById('status-msg').innerHTML=msg;
+}
+
+/* ── MOVES LOG ────────────────────────────────────── */
+function renderMovesLog(moves){
+  const el=document.getElementById('moves-log'); el.innerHTML='';
+  const list=[...moves].reverse().slice(0,50);
+  for(const m of list){
+    const div=document.createElement('div');
+    const isMine = m.playerId===myPid;
+    div.className=`log-entry${isMine?' mine':''}`;
+    const t=new Date(m.timestamp).toLocaleTimeString('it-IT');
+    const desc=m.data?.description||m.data?.type||'—';
+    div.textContent=`[${t}] ${desc}`;
+    el.appendChild(div);
+  }
+}
+
+/* ── ABANDON ──────────────────────────────────────── */
+async function abandonGame(){
+  if(!confirm('Abbandonare la partita?')) return;
+  stopPoll();
+  try{ await api('PUT',`/games/${gameId}`,{status:'finished'}); }catch(_){}
+  goLobby();
+}
+
+/* ── LOBBY ──────────────────────────────────────────── */
+function goLobby(){
+  stopPoll();
+  gameId=null; myPid=null; oppPid=null; gs=null; pendingInvite=null;
+  document.getElementById('invite-box').style.display='none';
+  document.getElementById('hdr-game').textContent='';
+  document.getElementById('winner-overlay').classList.remove('show');
+  showScreen('lobby');
+  loadGames();
+}
+
+/* ── WINNER ───────────────────────────────────────── */
+function showWinner(){
+  const sm=gs.scores[myPid]||0;
+  const so=gs.scores[oppPid]||0;
+  const myLbl=document.getElementById('lbl-me').textContent;
+  const oppLbl=document.getElementById('lbl-opp').textContent;
+
+  document.getElementById('w-sc-me').textContent  = sm;
+  document.getElementById('w-sc-opp').textContent = so;
+  document.getElementById('w-lbl-me').textContent  = myLbl;
+  document.getElementById('w-lbl-opp').textContent = oppLbl;
+
+  if(gs.winner==='draw'){
+    document.getElementById('w-emoji').textContent='🤝';
+    document.getElementById('w-title').textContent='Pareggio!';
+    document.getElementById('w-msg').textContent=`Entrambi ${sm} punti!`;
+  } else if(gs.winner===myPid){
+    document.getElementById('w-emoji').textContent='🏆';
+    document.getElementById('w-title').textContent='Hai vinto!';
+    document.getElementById('w-msg').textContent=`${myLbl}: ${sm} pt  |  ${oppLbl}: ${so} pt`;
+  } else {
+    document.getElementById('w-emoji').textContent='😔';
+    document.getElementById('w-title').textContent='Hai perso!';
+    document.getElementById('w-msg').textContent=`${myLbl}: ${sm} pt  |  ${oppLbl}: ${so} pt`;
+  }
+  document.getElementById('winner-overlay').classList.add('show');
+}
+
+document.getElementById('winner-overlay').addEventListener('click',function(e){
+  if(e.target===this) this.classList.remove('show');
+});
+</script>
+</body>
+</html>
