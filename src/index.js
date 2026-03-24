@@ -16,17 +16,28 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
+<<<<<<< HEAD
 // Serve static files from public/
 app.use(express.static(join(__dirname, '../public')));
 // Serve card images
 app.use('/cards', express.static(join(__dirname, '../carte_bergamasche_nome_corretto')));
 
+=======
+>>>>>>> fcfbf2ae284ad760084e717bbf9c41de48953e18
 // Logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
+<<<<<<< HEAD
+=======
+// Static files
+app.use('/frontend',express.static(join(__dirname, '../static')));
+app.use('/favicon.ico', express.static(join(__dirname, '../static/favicon.ico')));
+
+
+>>>>>>> fcfbf2ae284ad760084e717bbf9c41de48953e18
 // Public routes (no authentication required)
 app.use('/auth', authRoutes);
 
