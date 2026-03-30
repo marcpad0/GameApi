@@ -55,11 +55,11 @@
     h3 { color: var(--gold); margin-bottom: .5rem; }
 
     /* ── Inputs ── */
-    input[type=text] {
+    input[type=text], select {
       background: #222; border: 1px solid #555; border-radius: 6px;
       color: var(--light); padding: 10px 14px; font-size: 1rem; width: 100%;
     }
-    input[type=text]:focus { outline: none; border-color: var(--gold); }
+    input[type=text]:focus, select:focus { outline: none; border-color: var(--gold); }
     input[readonly] { opacity: .7; cursor: text; }
 
     /* ── Buttons ── */
@@ -331,6 +331,16 @@
     </div>
   </div>
 
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;">⚙️ Impostazioni</h2>
+      <button class="btn-dark" onclick="openSettings()">Apri</button>
+    </div>
+    <p style="color:#aaa;font-size:.88rem;margin-top:10px;">
+      Scegli il tipo di mazzo mostrato durante la partita.
+    </p>
+  </div>
+
   <!-- Lista partite -->
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -338,6 +348,29 @@
       <button class="btn-dark" onclick="loadGames()">↻ Aggiorna</button>
     </div>
     <div id="games-list" class="mt1"><span class="spinner"></span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: SETTINGS
+══════════════════════════════════════════════ -->
+<div id="screen-settings" class="screen" style="max-width:560px;">
+  <div class="panel">
+    <h2>⚙️ Impostazioni</h2>
+    <p style="color:#aaa;font-size:.88rem;margin-bottom:12px;">
+      Seleziona quale tipo di carte vuoi vedere sul tavolo.
+    </p>
+    <div class="col">
+      <label>Tipo carte</label>
+      <select id="sel-card-theme">
+        <option value="napoletane">Carte Napoletane</option>
+        <option value="bergamasche">Carte Bergamasche</option>
+      </select>
+    </div>
+    <div class="row mt1">
+      <button class="btn-blue" onclick="saveSettings()">Salva</button>
+      <button class="btn-dark" onclick="goLobby()">Annulla</button>
+    </div>
   </div>
 </div>
 
@@ -443,6 +476,12 @@ const SUIT_ICON  = {bastoni:'🪄',coppe:'🏆',denari:'🪙',spade:'⚔️'};
 const RANK_LABEL = {as:'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7',fante:'F',cavallo:'C',re:'R'};
 const POINTS     = {as:11,'3':10,re:4,cavallo:3,fante:2,'2':0,'4':0,'5':0,'6':0,'7':0};
 const POWER      = {as:9,'3':8,re:7,cavallo:6,fante:5,'7':4,'6':3,'5':2,'4':1,'2':0};
+const CARD_THEME_STORAGE_KEY = 'bris_card_theme';
+const CARD_THEMES = {
+  napoletane: { label:'Carte Napoletane', dir:'carte_napoletane_nome_corretto' },
+  bergamasche:{ label:'Carte Bergamasche', dir:'carte_bergamasche_nome_corretto' }
+};
+const DEFAULT_CARD_THEME = 'napoletane';
 
 function buildDeck() {
   const d = [];
@@ -491,6 +530,8 @@ let myRole   = null;  // 'p1' | 'p2'
 let gs       = null;  // game state
 let pollTimer= null;
 let posting  = false;
+let cardTheme = localStorage.getItem(CARD_THEME_STORAGE_KEY) || DEFAULT_CARD_THEME;
+if(!CARD_THEMES[cardTheme]) cardTheme = DEFAULT_CARD_THEME;
 
 // Pending invite (set after createGame, before enterAsP1)
 let pendingInvite = null; // {gameId, p1id, p2id}
@@ -524,6 +565,35 @@ function showScreen(id){
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function getCardDir(theme = cardTheme){
+  return (CARD_THEMES[theme] || CARD_THEMES[DEFAULT_CARD_THEME]).dir;
+}
+
+function getFallbackCardDir(theme = cardTheme){
+  const alt = theme === 'napoletane' ? 'bergamasche' : 'napoletane';
+  return getCardDir(alt);
+}
+
+function openSettings(){
+  const sel = document.getElementById('sel-card-theme');
+  if(sel) sel.value = cardTheme;
+  showScreen('settings');
+}
+
+function saveSettings(){
+  const sel = document.getElementById('sel-card-theme');
+  const nextTheme = sel?.value || DEFAULT_CARD_THEME;
+  if(!CARD_THEMES[nextTheme]){
+    toast('Tipo di carte non valido','err');
+    return;
+  }
+  cardTheme = nextTheme;
+  localStorage.setItem(CARD_THEME_STORAGE_KEY, cardTheme);
+  if(gs) renderBoard();
+  toast(`Mazzo impostato: ${CARD_THEMES[cardTheme].label}`,'ok');
+  goLobby();
+}
 
 /* ── AUTH ─────────────────────────────────────────── */
 function saveDisplayName(){
@@ -665,6 +735,8 @@ window.addEventListener('load', ()=>{
   if(inviteInput && inv){
     inviteInput.value = `${location.origin}${location.pathname}?invite=${makeInviteToken(inv)}`;
   }
+  const settingsSelect = document.getElementById('sel-card-theme');
+  if(settingsSelect) settingsSelect.value = cardTheme;
   if(inv && (inv.as||'p2')==='p2'){
     afterLogin();
     return;
@@ -1086,9 +1158,7 @@ function renderHandBack(elId, count){
 }
 
 const RANK_FILE = {as:'asso','2':'due','3':'tre','4':'quattro','5':'cinque','6':'sei','7':'sette',fante:'fante',cavallo:'cavallo',re:'re'};
-const CARD_DIR_PRIMARY = 'carte_napoletane_nome_corretto';
-const CARD_DIR_FALLBACK = 'carte_bergamasche_nome_corretto';
-function cardSrc(c, cardDir = CARD_DIR_PRIMARY){
+function cardSrc(c, cardDir = getCardDir()){
   return `/frontend/img/${cardDir}/${RANK_FILE[c.rank]}_${c.suit}.jpg`;
 }
 
@@ -1100,7 +1170,7 @@ function mkCard(c, playable, played){
   img.onerror=()=>{
     if(img.dataset.fallbackTried) return;
     img.dataset.fallbackTried='1';
-    img.src=cardSrc(c, CARD_DIR_FALLBACK);
+    img.src=cardSrc(c, getFallbackCardDir());
   };
   img.alt=`${RANK_LABEL[c.rank]} di ${c.suit}`;
   img.draggable=false;
