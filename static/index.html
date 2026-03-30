@@ -276,17 +276,11 @@
   <div class="panel">
     <h2>👤 Identificazione</h2>
     <p style="color:#aaa;font-size:.88rem;margin-bottom:16px;">
-      Nessuna API key utente e nessun /auth/register.
-      Inserisci il nome giocatore e continua. L'invito e facoltativo.
+      Inserisci il nome giocatore.
     </p>
     <div class="col">
       <label>Nome giocatore</label>
       <input type="text" id="inp-display-name" placeholder="es. mario_rossi" />
-    </div>
-    <div class="col mt1" id="invite-row">
-      <label>Link o codice invito (opzionale)</label>
-      <input type="text" id="inp-invite-url" placeholder="https://.../frontend/index.html?invite=..." />
-      <small id="invite-hint" style="color:#777;font-size:.78rem;">Se lo lasci vuoto, entri in lobby e puoi creare una nuova partita.</small>
     </div>
     <div class="row mt1">
       <button class="btn-blue" onclick="doLoginWithInvite()">Continua</button>
@@ -659,24 +653,8 @@ function readInviteToken(token){
   }
 }
 
-function parseInvite(raw){
-  const txt = (raw||'').trim();
-  let params = null;
-
-  if(txt){
-    if(!txt.includes('?') && !txt.includes('=') && !txt.includes('&') && !txt.includes('http')){
-      params = new URLSearchParams(`invite=${encodeURIComponent(txt)}`);
-    } else {
-      try{
-        params = new URL(txt, location.origin).searchParams;
-      }catch(_){
-        const q = txt.startsWith('?') ? txt.slice(1) : txt;
-        params = new URLSearchParams(q);
-      }
-    }
-  }else {
-    params = new URLSearchParams(location.search);
-  }
+function parseInvite(){
+  const params = new URLSearchParams(location.search);
 
   const inviteToken = params.get('invite') || '';
   if(inviteToken){
@@ -693,44 +671,13 @@ function parseInvite(raw){
   return { join, p1id, p2id, as };
 }
 
-function applyInviteToUrl(inv){
-  const token = makeInviteToken(inv);
-  const p = new URLSearchParams();
-  p.set('invite', token);
-  history.replaceState({},'',`${location.pathname}?${p.toString()}`);
-  return p;
-}
-
 function syncApiKeyFromInvite(){
   useInternalAuth();
-  const inv = parseInvite();
-  if(!inv) return apiKey;
-
-  const inviteInput = document.getElementById('inp-invite-url');
-  if(inviteInput){
-    inviteInput.value = `${location.origin}${location.pathname}?invite=${makeInviteToken(inv)}`;
-  }
-  const hint = document.getElementById('invite-hint');
-  if(hint) hint.textContent = 'Link invito rilevato.';
-
   return apiKey;
 }
 
 function doLoginWithInvite(){
   saveDisplayName();
-  const rawInvite = document.getElementById('inp-invite-url').value;
-
-  if(rawInvite.trim()){
-    const inv = parseInvite(rawInvite);
-    if(!inv){
-      toast('Incolla un invito valido','err');
-      return;
-    }
-    applyInviteToUrl(inv);
-  } else {
-    history.replaceState({},'',location.pathname);
-  }
-
   syncApiKeyFromInvite();
   afterLogin();
 }
@@ -752,10 +699,6 @@ window.addEventListener('load', ()=>{
   syncApiKeyFromInvite();
   const displayInput = document.getElementById('inp-display-name');
   if(displayInput) displayInput.value = myName;
-  const inviteInput = document.getElementById('inp-invite-url');
-  if(inviteInput && inv){
-    inviteInput.value = `${location.origin}${location.pathname}?invite=${makeInviteToken(inv)}`;
-  }
   const settingsSelect = document.getElementById('sel-card-theme');
   if(settingsSelect) settingsSelect.value = cardTheme;
   if(inv && (inv.as||'p2')==='p2'){
