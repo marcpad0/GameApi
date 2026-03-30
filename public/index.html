@@ -671,10 +671,11 @@ async function loadGames(){
   el.innerHTML='<span class="spinner"></span>';
   try{
     const d = await api('GET','/games');
-    if(!d.games.length){ el.innerHTML='<em style="color:#666">Nessuna partita.</em>'; return; }
-    d.games.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const gamesToShow = d.games.filter(g => g.status !== 'finished');
+    if(!gamesToShow.length){ el.innerHTML='<em style="color:#666">Nessuna partita attiva.</em>'; return; }
+    gamesToShow.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     el.innerHTML='';
-    for(const g of d.games){
+    for(const g of gamesToShow){
       const div=document.createElement('div'); div.className='game-card';
       div.innerHTML=`
         <div>
