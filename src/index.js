@@ -16,13 +16,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-
-// Serve static files from public/
-app.use(express.static(join(__dirname, '../public')));
-// Serve card images
-app.use('/cards', express.static(join(__dirname, '../carte_bergamasche_nome_corretto')));
-
-
 // Logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
