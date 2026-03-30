@@ -266,25 +266,22 @@
 ══════════════════════════════════════════════ -->
 <div id="screen-auth" class="screen active" style="max-width:480px;">
   <div class="panel">
-    <h2>🔑 Accesso</h2>
+    <h2>👤 Identificazione</h2>
     <p style="color:#aaa;font-size:.88rem;margin-bottom:16px;">
-      Registrati con un username per ottenere la tua API Key,
-      oppure incolla una chiave già esistente.
+      Nessuna API key utente e nessun /auth/register.
+      Inserisci il nome giocatore e continua. L'invito e facoltativo.
     </p>
     <div class="col">
-      <label>Username (nuovo utente)</label>
-      <input type="text" id="inp-username" placeholder="es. mario_rossi" />
+      <label>Nome giocatore</label>
+      <input type="text" id="inp-display-name" placeholder="es. mario_rossi" />
+    </div>
+    <div class="col mt1" id="invite-row">
+      <label>Link o codice invito (opzionale)</label>
+      <input type="text" id="inp-invite-url" placeholder="https://.../frontend/index.html?invite=..." />
+      <small id="invite-hint" style="color:#777;font-size:.78rem;">Se lo lasci vuoto, entri in lobby e puoi creare una nuova partita.</small>
     </div>
     <div class="row mt1">
-      <button class="btn-gold" onclick="doRegister()">Registrati &amp; Ottieni API Key</button>
-    </div>
-    <hr />
-    <div class="col">
-      <label>Oppure USA una API Key esistente</label>
-      <input type="text" id="inp-apikey" placeholder="xxxxxxxx-xxxx-xxxx-…" />
-    </div>
-    <div class="row mt1">
-      <button class="btn-blue" onclick="doLoginWithKey()">Entra con API Key</button>
+      <button class="btn-blue" onclick="doLoginWithInvite()">Continua</button>
     </div>
   </div>
 </div>
@@ -484,7 +481,8 @@ function initState(p1id, p2id){
 }
 
 /* ── App State ──────────────────────────────────── */
-let apiKey   = localStorage.getItem('bris_key')  || '';
+const INTERNAL_API_KEY = 'f9d64788-71e9-4b54-9d88-42c4005feaa91eab062d0cf54ddbaf3cd8c620293e29';
+let apiKey   = INTERNAL_API_KEY;
 let myName   = localStorage.getItem('bris_name') || 'Giocatore';
 let gameId   = null;
 let myPid    = null;  // player ID in THIS game
@@ -495,7 +493,7 @@ let pollTimer= null;
 let posting  = false;
 
 // Pending invite (set after createGame, before enterAsP1)
-let pendingInvite = null; // {gameId, p1id, p2id, apiKey}
+let pendingInvite = null; // {gameId, p1id, p2id}
 
 /* ── API ─────────────────────────────────────────── */
 async function api(method, path, body, key){
@@ -528,34 +526,129 @@ function showScreen(id){
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
 /* ── AUTH ─────────────────────────────────────────── */
-async function doRegister(){
-  const u = document.getElementById('inp-username').value.trim();
-  if(!u){ toast('Inserisci un username','err'); return; }
-  try{
-    const d = await api('POST','/auth/register',{username:u});
-    apiKey  = d.user.apiKey;
-    myName  = d.user.username;
-    localStorage.setItem('bris_key',  apiKey);
+function saveDisplayName(){
+  const nameInput = document.getElementById('inp-display-name');
+  if(!nameInput) return;
+  const name = nameInput.value.trim();
+  if(name){
+    myName = name;
     localStorage.setItem('bris_name', myName);
-    afterLogin();
-    toast(`Benvenuto ${myName}! 🎉`,'ok');
-  }catch(e){ toast(e.message,'err'); }
+  }
 }
 
-function doLoginWithKey(){
-  const k = document.getElementById('inp-apikey').value.trim();
-  if(!k){ toast('Incolla la tua API Key','err'); return; }
-  apiKey = k;
-  localStorage.setItem('bris_key', k);
+function useInternalAuth(){
+  apiKey = INTERNAL_API_KEY;
+}
+
+function makeInviteToken(data){
+  const payload = JSON.stringify({
+    join: data.join || '',
+    p1id: data.p1id || '',
+    p2id: data.p2id || '',
+    as: data.as || 'p2'
+  });
+  return btoa(payload).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function readInviteToken(token){
+  try{
+    const normalized = (token||'').replace(/-/g,'+').replace(/_/g,'/');
+    const padLen = (4 - (normalized.length % 4)) % 4;
+    const padded = normalized + '='.repeat(padLen);
+    const parsed = JSON.parse(atob(padded));
+    if(!parsed?.join) return null;
+    return {
+      join: parsed.join,
+      p1id: parsed.p1id || '',
+      p2id: parsed.p2id || '',
+      as: parsed.as || 'p2'
+    };
+  }catch(_){
+    return null;
+  }
+}
+
+function parseInvite(raw){
+  const txt = (raw||'').trim();
+  let params = null;
+
+  if(txt){
+    if(!txt.includes('?') && !txt.includes('=') && !txt.includes('&') && !txt.includes('http')){
+      params = new URLSearchParams(`invite=${encodeURIComponent(txt)}`);
+    } else {
+      try{
+        params = new URL(txt, location.origin).searchParams;
+      }catch(_){
+        const q = txt.startsWith('?') ? txt.slice(1) : txt;
+        params = new URLSearchParams(q);
+      }
+    }
+  }else {
+    params = new URLSearchParams(location.search);
+  }
+
+  const inviteToken = params.get('invite') || '';
+  if(inviteToken){
+    const decoded = readInviteToken(inviteToken);
+    if(decoded) return decoded;
+  }
+
+  const join = params.get('join') || '';
+  const p1id = params.get('p1id') || '';
+  const p2id = params.get('p2id') || '';
+  const as   = params.get('as') || 'p2';
+
+  if(!join) return null;
+  return { join, p1id, p2id, as };
+}
+
+function applyInviteToUrl(inv){
+  const token = makeInviteToken(inv);
+  const p = new URLSearchParams();
+  p.set('invite', token);
+  history.replaceState({},'',`${location.pathname}?${p.toString()}`);
+  return p;
+}
+
+function syncApiKeyFromInvite(){
+  useInternalAuth();
+  const inv = parseInvite();
+  if(!inv) return apiKey;
+
+  const inviteInput = document.getElementById('inp-invite-url');
+  if(inviteInput){
+    inviteInput.value = `${location.origin}${location.pathname}?invite=${makeInviteToken(inv)}`;
+  }
+  const hint = document.getElementById('invite-hint');
+  if(hint) hint.textContent = 'Link invito rilevato.';
+
+  return apiKey;
+}
+
+function doLoginWithInvite(){
+  saveDisplayName();
+  const rawInvite = document.getElementById('inp-invite-url').value;
+
+  if(rawInvite.trim()){
+    const inv = parseInvite(rawInvite);
+    if(!inv){
+      toast('Incolla un invito valido','err');
+      return;
+    }
+    applyInviteToUrl(inv);
+  } else {
+    history.replaceState({},'',location.pathname);
+  }
+
+  syncApiKeyFromInvite();
   afterLogin();
 }
 
 function afterLogin(){
-  document.getElementById('hdr-user').textContent = `🔑 ${myName}`;
-  // Check URL params → auto-join as p2
-  const params = new URLSearchParams(location.search);
-  if(params.get('join') && params.get('as')==='p2'){
-    autoJoinAsP2(params);
+  document.getElementById('hdr-user').textContent = `👤 ${myName}`;
+  const inv = parseInvite();
+  if(inv && (inv.as||'p2')==='p2'){
+    autoJoinAsP2(inv);
   } else {
     showScreen('lobby');
     loadGames();
@@ -563,21 +656,19 @@ function afterLogin(){
 }
 
 window.addEventListener('load', ()=>{
-  // Pre-fill API key if stored
-  if(apiKey) document.getElementById('inp-apikey').value = apiKey;
-  // Auto-join flow from invite link
-  const params = new URLSearchParams(location.search);
-  if(params.get('join') && params.get('as')==='p2'){
-    // Show auth screen first so user logs in / registers
-    // If already have key, proceed directly
-    if(apiKey){
-      afterLogin();
-    } else {
-      toast('Accedi o registrati per unirti alla partita','info');
-    }
+  useInternalAuth();
+  const inv = parseInvite();
+  syncApiKeyFromInvite();
+  const displayInput = document.getElementById('inp-display-name');
+  if(displayInput) displayInput.value = myName;
+  const inviteInput = document.getElementById('inp-invite-url');
+  if(inviteInput && inv){
+    inviteInput.value = `${location.origin}${location.pathname}?invite=${makeInviteToken(inv)}`;
+  }
+  if(inv && (inv.as||'p2')==='p2'){
+    afterLogin();
     return;
   }
-  if(apiKey){ afterLogin(); }
 });
 
 /* ── CREATE GAME ─────────────────────────────────── */
@@ -600,11 +691,17 @@ async function createGame(){
       data: { type:'init', description:'Partita creata', state: st }
     });
 
-    pendingInvite = {gameId:gid, p1id:r1.player.id, p2id:r2.player.id, apiKey};
+    pendingInvite = {gameId:gid, p1id:r1.player.id, p2id:r2.player.id};
 
     // Build invite link
     const base = `${location.origin}${location.pathname}`;
-    const link = `${base}?join=${gid}&p1id=${r1.player.id}&p2id=${r2.player.id}&key=${apiKey}&as=p2`;
+    const token = makeInviteToken({
+      join: gid,
+      p1id: r1.player.id,
+      p2id: r2.player.id,
+      as: 'p2'
+    });
+    const link = `${base}?invite=${token}`;
     document.getElementById('invite-link').value = link;
     document.getElementById('invite-box').style.display = 'block';
     toast('Partita creata! Copia il link per invitare l\'avversario.','ok');
@@ -623,27 +720,83 @@ function enterAsP1(){
   startGameSession(gid, p1id, p2id, 'p1');
 }
 
+function normPlayerName(name){
+  return (name||'').trim().toLowerCase();
+}
+
+function isWaitingPlayer(name){
+  return normPlayerName(name).startsWith('in attesa');
+}
+
+async function identifyPlayerForGame(gid){
+  const chosenName = (myName||'').trim();
+  if(!chosenName){
+    throw new Error('Inserisci prima il nome giocatore');
+  }
+
+  const pd = await api('GET',`/games/${gid}/players`);
+  const players = [...(pd.players||[])];
+
+  let me = players.find(p => normPlayerName(p.name)===normPlayerName(chosenName));
+  if(!me){
+    me = players.find(p => isWaitingPlayer(p.name));
+  }
+
+  if(!me && players.length<2){
+    const created = await api('POST',`/games/${gid}/players`,{name:chosenName});
+    me = created.player;
+    players.push(me);
+  }
+
+  if(!me){
+    const names = players.map(p=>p.name).join(', ');
+    throw new Error(names
+      ? `Impossibile identificarti. Player disponibili: ${names}`
+      : 'Impossibile identificarti in questa partita');
+  }
+
+  const opp = players.find(p=>p.id!==me.id)||null;
+  return { me, opp };
+}
+
+async function resolveSessionFromPlayers(gid){
+  const idInfo = await identifyPlayerForGame(gid);
+  const gd = await api('GET',`/games/${gid}`);
+  const gamePlayers = gd.game.players||[];
+  const me = gamePlayers.find(p=>p.id===idInfo.me.id) || idInfo.me;
+  const opp = gamePlayers.find(p=>p.id!==me.id) || idInfo.opp;
+
+  if(!opp){
+    throw new Error('Serve un secondo player per iniziare la partita');
+  }
+
+  const myIndex = gamePlayers.findIndex(p=>p.id===me.id);
+  const role = myIndex===0 ? 'p1' : 'p2';
+  return { meId: me.id, oppId: opp.id, role };
+}
+
 /* ── JOIN AS P2 from URL ─────────────────────────── */
-async function autoJoinAsP2(params){
-  const gid   = params.get('join');
-  const p1id  = params.get('p1id');
-  const p2id  = params.get('p2id');
-  const key   = params.get('key');
+async function autoJoinAsP2(inv){
+  const gid   = inv?.join;
 
-  if(!gid||!p1id||!p2id||!key){ toast('Link di invito non valido','err'); showScreen('lobby'); return; }
-
-  // Use the owner's key for API calls (required by backend permissions)
-  apiKey = key;
-  localStorage.setItem('bris_key', key);
+  if(!gid){ toast('Link di invito non valido','err'); showScreen('lobby'); return; }
+  useInternalAuth();
 
   // Update p2 player name
   try{
     // Patch game name with p2's name
-    await api('PUT',`/games/${gid}`,{name:`[Briscola] ??? vs ${myName}`}, key);
+    await api('PUT',`/games/${gid}`,{name:`[Briscola] ??? vs ${myName}`});
   }catch(_){}
 
-  toast(`Unito alla partita come ${myName}!`,'ok');
-  startGameSession(gid, p2id, p1id, 'p2');
+  try{
+    const s = await resolveSessionFromPlayers(gid);
+    toast(`Unito alla partita come ${myName}!`,'ok');
+    startGameSession(gid, s.meId, s.oppId, s.role);
+  }catch(e){
+    toast(e.message,'err');
+    showScreen('lobby');
+    return;
+  }
   // Clean URL
   history.replaceState({},'',location.pathname);
 }
@@ -653,15 +806,8 @@ async function joinByGameId(){
   const gid = document.getElementById('inp-join-id').value.trim();
   if(!gid){ toast('Inserisci un Game ID','err'); return; }
   try{
-    const gd = await api('GET',`/games/${gid}`);
-    const g  = gd.game;
-    if(g.players.length < 2){ toast('Partita non ancora pronta (< 2 giocatori)','err'); return; }
-    // Prompt which player to be
-    const choice = prompt(`Chi sei?\n1 = ${g.players[0].name}\n2 = ${g.players[1].name}`);
-    if(!choice) return;
-    const me  = choice==='1' ? g.players[0] : g.players[1];
-    const opp = choice==='1' ? g.players[1] : g.players[0];
-    startGameSession(gid, me.id, opp.id, choice==='1'?'p1':'p2');
+    const s = await resolveSessionFromPlayers(gid);
+    startGameSession(gid, s.meId, s.oppId, s.role);
   }catch(e){ toast(e.message,'err'); }
 }
 
@@ -701,13 +847,8 @@ async function deleteGame(gid){
 
 async function resumeGame(gid){
   try{
-    const gd=await api('GET',`/games/${gid}`);
-    if(gd.game.players.length<2){ toast('Partita incompleta','err'); return; }
-    const choice=prompt(`Chi sei?\n1 = ${gd.game.players[0].name}\n2 = ${gd.game.players[1].name}`);
-    if(!choice) return;
-    const me  = choice==='1'?gd.game.players[0]:gd.game.players[1];
-    const opp = choice==='1'?gd.game.players[1]:gd.game.players[0];
-    startGameSession(gid, me.id, opp.id, choice==='1'?'p1':'p2');
+    const s = await resolveSessionFromPlayers(gid);
+    startGameSession(gid, s.meId, s.oppId, s.role);
   }catch(e){ toast(e.message,'err'); }
 }
 
@@ -945,13 +1086,22 @@ function renderHandBack(elId, count){
 }
 
 const RANK_FILE = {as:'asso','2':'due','3':'tre','4':'quattro','5':'cinque','6':'sei','7':'sette',fante:'fante',cavallo:'cavallo',re:'re'};
-function cardSrc(c){ return `/cards/${RANK_FILE[c.rank]}_${c.suit}.jpg`; }
+const CARD_DIR_PRIMARY = 'carte_napoletane_nome_corretto';
+const CARD_DIR_FALLBACK = 'carte_bergamasche_nome_corretto';
+function cardSrc(c, cardDir = CARD_DIR_PRIMARY){
+  return `/frontend/img/${cardDir}/${RANK_FILE[c.rank]}_${c.suit}.jpg`;
+}
 
 function mkCard(c, playable, played){
   const d=document.createElement('div');
   d.className=`card${playable?' playable':''}${played?' played':''}`;
   const img=document.createElement('img');
   img.src=cardSrc(c);
+  img.onerror=()=>{
+    if(img.dataset.fallbackTried) return;
+    img.dataset.fallbackTried='1';
+    img.src=cardSrc(c, CARD_DIR_FALLBACK);
+  };
   img.alt=`${RANK_LABEL[c.rank]} di ${c.suit}`;
   img.draggable=false;
   d.appendChild(img);
