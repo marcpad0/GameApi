@@ -89,6 +89,14 @@
       border-radius: 10px; padding: 16px;
     }
     .invite-box p { color: #aaa; font-size: .88rem; margin-bottom: 10px; }
+    .queue-box {
+      background: #0d2234; border: 2px solid #2f6f9e;
+      border-radius: 10px; padding: 16px;
+    }
+    .queue-row {
+      display: flex; align-items: center; gap: 10px;
+      color: #b9defb; font-size: .92rem;
+    }
     .link-row { display: flex; gap: 8px; }
     .link-row input { font-size: .78rem; background: #0a1a0a; border-color: #2a8a4a; }
 
@@ -293,7 +301,18 @@
   <!-- Crea nuova partita -->
   <div class="panel">
     <div class="row">
-      <button class="btn-gold" onclick="createGame()">Crea partita</button>
+      <button class="btn-gold" id="btn-private" onclick="createPrivateGame()">Partita privata</button>
+      <button class="btn-blue" id="btn-queue" onclick="queueRandomMatch()">Coda casuale</button>
+    </div>
+
+    <div id="queue-box" class="queue-box mt1" style="display:none;">
+      <div class="queue-row">
+        <span class="spinner"></span>
+        <span id="queue-msg">Ricerca avversario casuale…</span>
+      </div>
+      <div class="row mt1">
+        <button class="btn-dark" onclick="cancelQueue()">Esci dalla coda</button>
+      </div>
     </div>
 
     <!-- Invite box – appare dopo creazione -->
@@ -535,6 +554,9 @@ let cardTheme = persistCardTheme(localStorage.getItem(CARD_THEME_STORAGE_KEY) ||
 
 // Pending invite (set after createGame, before enterAsP1)
 let pendingInvite = null; // {gameId, p1id, p2id}
+let queueTimer = null;
+let queueGameId = null;
+let queueChecking = false;
 
 /* ── API ─────────────────────────────────────────── */
 async function api(method, path, body, key){
@@ -742,41 +764,167 @@ window.addEventListener('load', ()=>{
   }
 });
 
-/* ── CREATE GAME ─────────────────────────────────── */
-async function createGame(){
-  const name = (myName||'Giocatore').trim() || 'Giocatore';
-  try{
-    // 1. Create game
-    const gd = await api('POST','/games',{name:`[Briscola] ${name} vs ???`});
-    const gid = gd.game.id;
+/* ── MATCHMAKING ────────────────────────────────── */
+function setQueueUI(active, message){
+  const box = document.getElementById('queue-box');
+  const msg = document.getElementById('queue-msg');
+  if(box) box.style.display = active ? 'block' : 'none';
+  if(msg && message) msg.textContent = message;
 
-    // 2. Add Player 1 (me)
+  const btnQueue = document.getElementById('btn-queue');
+  const btnPrivate = document.getElementById('btn-private');
+  if(btnQueue) btnQueue.disabled = active;
+  if(btnPrivate) btnPrivate.disabled = active;
+}
+
+function stopQueueMatch(resetGame = true){
+  clearInterval(queueTimer);
+  queueTimer = null;
+  queueChecking = false;
+  if(resetGame) queueGameId = null;
+  setQueueUI(false);
+}
+
+async function checkQueueMatch(){
+  if(!queueGameId || queueChecking) return;
+  queueChecking = true;
+
+  try{
+    const gid = queueGameId;
+    const gd = await api('GET',`/games/${gid}`);
+    const g = gd.game;
+    if(!g){ throw new Error('Partita in coda non trovata'); }
+
+    // A joined queue match is signaled by an extra move beyond the init move.
+    // Player placeholder name can remain "In attesa…", so names are not reliable here.
+    const hasJoinSignal = (g.moves?.length||0) > 1;
+    if(!hasJoinSignal){
+      setQueueUI(true,'Ricerca avversario casuale…');
+      return;
+    }
+
+    const s = await resolveSessionFromPlayers(gid);
+    await markJoinedIfNeeded(gid, s.meId);
+    stopQueueMatch();
+    toast('Avversario trovato!','ok');
+    startGameSession(gid, s.meId, s.oppId, s.role);
+  }catch(e){
+    stopQueueMatch();
+    toast(e.message || 'Errore durante la coda casuale','err');
+  }finally{
+    if(queueTimer) queueChecking = false;
+  }
+}
+
+function startQueueWatcher(){
+  clearInterval(queueTimer);
+  queueTimer = setInterval(checkQueueMatch, 2500);
+}
+
+async function cancelQueue(){
+  const gid = queueGameId;
+  stopQueueMatch();
+
+  if(gid){
+    try{
+      const gd = await api('GET',`/games/${gid}`);
+      const stillWaiting = (gd.game?.players||[]).some(p => isWaitingPlayer(p.name));
+      if(stillWaiting){
+        await api('DELETE',`/games/${gid}`);
+      }
+    }catch(_){ }
+  }
+
+  toast('Sei uscito dalla coda.','info');
+}
+
+async function queueRandomMatch(){
+  const name = (myName||'Giocatore').trim() || 'Giocatore';
+  if(queueTimer){
+    toast('Sei gia in coda.','info');
+    return;
+  }
+
+  document.getElementById('invite-box').style.display = 'none';
+  setQueueUI(true,'Ricerca avversario casuale…');
+
+  try{
+    const all = await api('GET','/games');
+    const waiting = (all.games||[])
+      .filter(isQueueJoinable)
+      .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+
+    const mine = waiting.find(g => normPlayerName(g.players?.[0]?.name || '')===normPlayerName(name));
+    if(mine){
+      queueGameId = mine.id;
+      startQueueWatcher();
+      await checkQueueMatch();
+      return;
+    }
+
+    const candidate = waiting.find(g => normPlayerName(g.players?.[0]?.name || '')!==normPlayerName(name));
+    if(candidate){
+      try{
+        const host = candidate.players?.[0]?.name || '???';
+        await api('PUT',`/games/${candidate.id}`,{name:`[Briscola][Queue] ${host} vs ${name}`});
+      }catch(_){ }
+
+      const s = await resolveSessionFromPlayers(candidate.id);
+      await markJoinedIfNeeded(candidate.id, s.meId);
+      stopQueueMatch();
+      toast('Avversario trovato!','ok');
+      startGameSession(candidate.id, s.meId, s.oppId, s.role);
+      return;
+    }
+
+    const gd = await api('POST','/games',{name:`[Briscola][Queue] ${name} vs ???`});
+    const gid = gd.game.id;
     const r1 = await api('POST',`/games/${gid}/players`,{name});
-    // 3. Add Player 2 placeholder
+    const r2 = await api('POST',`/games/${gid}/players`,{name:'In attesa…'});
+    const st = initState(r1.player.id, r2.player.id);
+
+    await api('POST',`/games/${gid}/moves`,{
+      playerId: r1.player.id,
+      data: { type:'init', description:'Partita casuale in coda', state: st }
+    });
+
+    queueGameId = gid;
+    setQueueUI(true,'In coda... in attesa di un avversario');
+    startQueueWatcher();
+  }catch(e){
+    stopQueueMatch();
+    toast(e.message,'err');
+    console.error(e);
+  }
+}
+
+async function createPrivateGame(){
+  const name = (myName||'Giocatore').trim() || 'Giocatore';
+  stopQueueMatch();
+
+  try{
+    const gd = await api('POST','/games',{name:`[Briscola][Private] ${name} vs ???`});
+    const gid = gd.game.id;
+    const r1 = await api('POST',`/games/${gid}/players`,{name});
     const r2 = await api('POST',`/games/${gid}/players`,{name:'In attesa…'});
 
-    // 4. Init game state, persist
     const st = initState(r1.player.id, r2.player.id);
     await api('POST',`/games/${gid}/moves`,{
       playerId: r1.player.id,
-      data: { type:'init', description:'Partita creata', state: st }
+      data: { type:'init', description:'Partita privata creata', state: st }
     });
 
     pendingInvite = {gameId:gid, p1id:r1.player.id, p2id:r2.player.id};
-
-    // Build invite link
     const base = `${location.origin}${location.pathname}`;
-    const token = makeInviteToken({
-      join: gid,
-      p1id: r1.player.id,
-      p2id: r2.player.id,
-      as: 'p2'
-    });
+    const token = makeInviteToken({ join: gid, p1id: r1.player.id, p2id: r2.player.id, as: 'p2' });
     const link = `${base}?invite=${token}`;
     document.getElementById('invite-link').value = link;
     document.getElementById('invite-box').style.display = 'block';
-    toast('Partita creata! Copia il link per invitare l\'avversario.','ok');
-  }catch(e){ toast(e.message,'err'); console.error(e); }
+    toast('Partita privata creata: condividi il link invito.','ok');
+  }catch(e){
+    toast(e.message,'err');
+    console.error(e);
+  }
 }
 
 function copyInvite(){
@@ -797,6 +945,29 @@ function normPlayerName(name){
 
 function isWaitingPlayer(name){
   return normPlayerName(name).startsWith('in attesa');
+}
+
+function isQueueJoinable(g){
+  if(!g || g.status==='finished') return false;
+  if(!(g.name||'').startsWith('[Briscola][Queue]')) return false;
+  const players = g.players||[];
+  if(players.length < 2) return false;
+  if(!players.some(p => isWaitingPlayer(p.name))) return false;
+  return (g.moves?.length||0) <= 1;
+}
+
+async function markJoinedIfNeeded(gid, meId){
+  try{
+    const md = await api('GET',`/games/${gid}/moves`);
+    const moves = [...(md.moves||[])].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    if(moves.length !== 1) return;
+    const state = moves[0]?.data?.state;
+    if(!state) return;
+    await api('POST',`/games/${gid}/moves`,{
+      playerId: meId,
+      data: { type:'join', description:`${myName} si unisce alla partita`, state }
+    });
+  }catch(_){ /* best effort */ }
 }
 
 async function identifyPlayerForGame(gid){
@@ -861,6 +1032,7 @@ async function autoJoinAsP2(inv){
 
   try{
     const s = await resolveSessionFromPlayers(gid);
+    await markJoinedIfNeeded(gid, s.meId);
     toast(`Unito alla partita come ${myName}!`,'ok');
     startGameSession(gid, s.meId, s.oppId, s.role);
   }catch(e){
@@ -1228,6 +1400,7 @@ async function abandonGame(){
 /* ── LOBBY ──────────────────────────────────────────── */
 function goLobby(){
   stopPoll();
+  stopQueueMatch();
   gameId=null; myPid=null; oppPid=null; gs=null; pendingInvite=null;
   document.getElementById('invite-box').style.display='none';
   document.getElementById('hdr-game').textContent='';
