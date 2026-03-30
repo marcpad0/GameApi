@@ -292,12 +292,7 @@
 <div id="screen-lobby" class="screen">
   <!-- Crea nuova partita -->
   <div class="panel">
-    <h2>🎮 Nuova Partita</h2>
     <div class="row">
-      <div class="col">
-        <label>Il tuo nome nel gioco</label>
-        <input type="text" id="inp-p1" placeholder="Giocatore 1" value="Giocatore 1" />
-      </div>
       <button class="btn-gold" onclick="createGame()">Crea partita</button>
     </div>
 
@@ -749,7 +744,7 @@ window.addEventListener('load', ()=>{
 
 /* ── CREATE GAME ─────────────────────────────────── */
 async function createGame(){
-  const name = document.getElementById('inp-p1').value.trim() || myName;
+  const name = (myName||'Giocatore').trim() || 'Giocatore';
   try{
     // 1. Create game
     const gd = await api('POST','/games',{name:`[Briscola] ${name} vs ???`});
