@@ -10,11 +10,7 @@ const options = {
     },
     servers: [
       {
-<<<<<<< HEAD
-        url: 'https://super-winner-44rvj74gjv5fqjrj-3000.app.github.dev/',
-=======
         url: 'https://fluffy-sniffle-x9r9jvjx76g36jxr-3000.app.github.dev/',
->>>>>>> fcfbf2ae284ad760084e717bbf9c41de48953e18
         description: 'Development server'
       }
     ],

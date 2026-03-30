@@ -4,7 +4,7 @@
     "username": "john_doe",
     "apiKey": "4cf54f7a-8887-44c5-8739-75116039b698341d0937019d448d8641d2d18aafb5e0",
     "createdAt": "2026-02-24T16:03:22.593Z"
-<<<<<<< HEAD
+
   },
   {
     "id": "b3a8f202-c7e9-4c93-81a5-c6f6b9905554",
@@ -71,7 +71,6 @@
     "username": "Pino",
     "apiKey": "a04f6c74-f8eb-4120-aef9-0565600fc2499e1bec62ea1b40089bff68a282947d57",
     "createdAt": "2026-03-23T16:31:52.427Z"
-=======
->>>>>>> fcfbf2ae284ad760084e717bbf9c41de48953e18
+
   }
 ]
