@@ -490,6 +490,9 @@ const CARD_THEMES = {
   bergamasche:{ label:'Carte Bergamasche', dir:'carte_bergamasche_nome_corretto' }
 };
 const DEFAULT_CARD_THEME = 'napoletane';
+const GHOST_ROOM_TTL_MS = 60 * 1000;
+const GHOST_CLEANUP_INTERVAL_MS = 15 * 1000;
+const PRESENCE_HEARTBEAT_MS = 25 * 1000;
 
 function persistCardTheme(theme){
   const safeTheme = CARD_THEMES[theme] ? theme : DEFAULT_CARD_THEME;
@@ -551,6 +554,10 @@ let pendingInvite = null; // {gameId, p1id, p2id}
 let queueTimer = null;
 let queueGameId = null;
 let queueChecking = false;
+let ghostCleanupTimer = null;
+let ghostCleanupRunning = false;
+let presenceTimer = null;
+let presenceInFlight = false;
 
 /* ── API ─────────────────────────────────────────── */
 async function api(method, path, body, key){
@@ -577,7 +584,12 @@ function showScreen(id){
   document.getElementById('screen-'+id).classList.add('active');
   const bw=document.getElementById('board-wrap');
   bw.classList.toggle('active', id==='game');
-  if(id!=='game') stopPoll();
+  if(id!=='game'){
+    stopPoll();
+    stopPresenceHeartbeat();
+  }
+  if(id==='lobby') startGhostCleanupWatcher();
+  else stopGhostCleanupWatcher();
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
@@ -998,30 +1010,162 @@ async function joinByGameId(){
 }
 
 /* ── LOAD GAMES (lobby list) ──────────────────────── */
-async function loadGames(){
+function isLobbyVisible(){
+  const lobby = document.getElementById('screen-lobby');
+  return !!lobby && lobby.classList.contains('active');
+}
+
+function renderGamesListMessage(message, color = '#666'){
   const el = document.getElementById('games-list');
-  el.innerHTML='<span class="spinner"></span>';
+  if(!el) return;
+  el.innerHTML = `<em style="color:${color}">${esc(message)}</em>`;
+}
+
+function friendlyGamesLoadError(error){
+  const raw = String(error?.message || '').trim();
+  const msg = raw.toLowerCase();
+  if(msg.includes('failed to fetch') || msg.includes('network') || msg.includes('http 5')){
+    return 'Server offline: elenco partite non disponibile.';
+  }
+  return raw || 'Errore durante il caricamento delle partite.';
+}
+
+function playerCountOf(game){
+  return Array.isArray(game?.players) ? game.players.length : 0;
+}
+
+function waitingPlayerCountOf(game){
+  if(!Array.isArray(game?.players)) return 0;
+  return game.players.filter(p => isWaitingPlayer(p?.name || '')).length;
+}
+
+function realPlayerCountOf(game){
+  if(!Array.isArray(game?.players)) return 0;
+  return game.players.filter(p => !isWaitingPlayer(p?.name || '')).length;
+}
+
+function gameLastActivityMs(game){
+  const stamp = game?.updatedAt || game?.createdAt;
+  const ms = stamp ? Date.parse(stamp) : NaN;
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function isExpiredGhostRoom(game, nowMs = Date.now()){
+  if(!game || game.status === 'finished') return false;
+  const gameName = String(game?.name || '');
+  if(!gameName.startsWith('[Briscola]')) return false;
+
+  const lastActivity = gameLastActivityMs(game);
+  if(!Number.isFinite(lastActivity)) return false;
+  if((nowMs - lastActivity) < GHOST_ROOM_TTL_MS) return false;
+
+  const totalPlayers = playerCountOf(game);
+  const waitingPlayers = waitingPlayerCountOf(game);
+  const realPlayers = realPlayerCountOf(game);
+
+  if(totalPlayers === 0) return true;
+  if(waitingPlayers > 0 || realPlayers < 2) return true;
+
+  // If both players leave the game view, heartbeats stop and stale matches are removed.
+  return true;
+}
+
+async function cleanupExpiredGhostRooms(games, silent = false){
+  const source = Array.isArray(games) ? games : [];
+  const toDelete = source.filter(g => typeof g?.id === 'string' && isExpiredGhostRoom(g));
+
+  if(!toDelete.length) return new Set();
+
+  const results = await Promise.allSettled(
+    toDelete.map(g => api('DELETE',`/games/${g.id}`))
+  );
+
+  const deletedIds = new Set();
+  for(let i = 0; i < results.length; i++){
+    if(results[i].status === 'fulfilled') deletedIds.add(toDelete[i].id);
+  }
+
+  if(deletedIds.size > 0 && !silent){
+    toast(`Eliminate ${deletedIds.size} stanze fantasma vuote.`, 'info');
+  }
+
+  return deletedIds;
+}
+
+async function runGhostCleanupWatcherTick(){
+  if(ghostCleanupRunning) return;
+  ghostCleanupRunning = true;
   try{
     const d = await api('GET','/games');
-    const gamesToShow = d.games.filter(g => g.status !== 'finished');
-    if(!gamesToShow.length){ el.innerHTML='<em style="color:#666">Nessuna partita attiva.</em>'; return; }
-    gamesToShow.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const games = Array.isArray(d.games) ? d.games : [];
+    const deletedIds = await cleanupExpiredGhostRooms(games, true);
+    if(deletedIds.size > 0){
+      await loadGames(true);
+    }
+  }catch(_){
+    if(isLobbyVisible()){
+      renderGamesListMessage('Server offline: elenco partite non disponibile.');
+    }
+  }finally{
+    ghostCleanupRunning = false;
+  }
+}
+
+function startGhostCleanupWatcher(){
+  if(ghostCleanupTimer) return;
+  ghostCleanupTimer = setInterval(runGhostCleanupWatcherTick, GHOST_CLEANUP_INTERVAL_MS);
+  runGhostCleanupWatcherTick();
+}
+
+function stopGhostCleanupWatcher(){
+  clearInterval(ghostCleanupTimer);
+  ghostCleanupTimer = null;
+  ghostCleanupRunning = false;
+}
+
+async function loadGames(silent = false){
+  const el = document.getElementById('games-list');
+  if(!silent) el.innerHTML='<span class="spinner"></span>';
+  try{
+    const d = await api('GET','/games');
+    const games = Array.isArray(d.games) ? d.games : [];
+    const deletedGhostIds = await cleanupExpiredGhostRooms(games, silent);
+    const gamesToShow = games.filter(g => {
+      if(!g || g.status === 'finished') return false;
+      if(deletedGhostIds.has(g.id)) return false;
+      const playerCount = playerCountOf(g);
+      return playerCount > 0;
+    });
+    if(!gamesToShow.length){
+      renderGamesListMessage('Nessuna partita attiva.');
+      return;
+    }
+    gamesToShow.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
     el.innerHTML='';
     for(const g of gamesToShow){
+      const totalPlayers = playerCountOf(g);
+      const realPlayers = realPlayerCountOf(g);
+      const moveCount = Array.isArray(g.moves) ? g.moves.length : 0;
+      const createdLabel = g.createdAt ? new Date(g.createdAt).toLocaleString('it-IT') : '—';
+      const gameName = (typeof g.name === 'string' && g.name.trim()) ? g.name : 'Partita senza nome';
+      const gameIdShort = (typeof g.id === 'string' && g.id.length) ? `${g.id.slice(0,10)}…` : '—';
+      const isBriscola = gameName.startsWith('[Briscola]');
       const div=document.createElement('div'); div.className='game-card';
       div.innerHTML=`
         <div>
-          <div class="name">${esc(g.name)}</div>
-          <div class="meta">ID: ${g.id.slice(0,10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${g.players.length} | 🃏 ${g.moves.length} mosse</div>
+          <div class="name">${esc(gameName)}</div>
+          <div class="meta">ID: ${gameIdShort} | ${createdLabel} | 👥 ${totalPlayers} | 🃏 ${moveCount} mosse</div>
         </div>
         <div class="btns">
           <span class="badge badge-${g.status==='active'?'active':'finished'}">${g.status==='active'?'In corso':'Finita'}</span>
-          ${g.name.startsWith('[Briscola]')&&g.players.length>=2
+          ${isBriscola&&totalPlayers>=2&&typeof g.id==='string'
             ? `<button class="btn-green" onclick="resumeGame('${g.id}')">▶ Riprendi</button>` : ''}
         </div>`;
       el.appendChild(div);
     }
-  }catch(e){ el.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  }catch(e){
+    renderGamesListMessage(friendlyGamesLoadError(e), 'var(--red)');
+  }
 }
 
 async function resumeGame(gid){
@@ -1048,6 +1192,7 @@ async function startGameSession(gid, myPidVal, oppPidVal, role){
   showScreen('game');
   renderBoard();
   startPoll();
+  startPresenceHeartbeat();
   if(gs.phase==='finished') { stopPoll(); showWinner(); }
 }
 
@@ -1177,6 +1322,33 @@ async function persist(type, description){
     playerId: myPid,
     data: { type, description, state: gs }
   });
+}
+
+async function sendPresenceHeartbeat(){
+  if(presenceInFlight || !gameId || !myPid || !gs || gs.phase !== 'playing') return;
+  presenceInFlight = true;
+  try{
+    await api('POST',`/games/${gameId}/moves`,{
+      playerId: myPid,
+      data: { type:'presence', description:'heartbeat', state: gs }
+    });
+  }catch(_){
+    // Best effort heartbeat: non bloccare la sessione di gioco.
+  }finally{
+    presenceInFlight = false;
+  }
+}
+
+function startPresenceHeartbeat(){
+  stopPresenceHeartbeat();
+  sendPresenceHeartbeat();
+  presenceTimer = setInterval(sendPresenceHeartbeat, PRESENCE_HEARTBEAT_MS);
+}
+
+function stopPresenceHeartbeat(){
+  clearInterval(presenceTimer);
+  presenceTimer = null;
+  presenceInFlight = false;
 }
 
 function otherOf(pid){ return pid===myPid?oppPid:myPid; }
@@ -1322,7 +1494,10 @@ function updateStatus(){
 /* ── MOVES LOG ────────────────────────────────────── */
 function renderMovesLog(moves){
   const el=document.getElementById('moves-log'); el.innerHTML='';
-  const list=[...moves].reverse().slice(0,50);
+  const list=[...moves]
+    .filter(m => m?.data?.type !== 'presence')
+    .reverse()
+    .slice(0,50);
   for(const m of list){
     const div=document.createElement('div');
     const isMine = m.playerId===myPid;
@@ -1339,6 +1514,7 @@ async function abandonGame(){
   if(!confirm('Abbandonare la partita?')) return;
   if(!gameId){ goLobby(); return; }
   stopPoll();
+  stopPresenceHeartbeat();
   try{
     await api('PUT',`/games/${gameId}`,{status:'finished'});
     await api('DELETE',`/games/${gameId}`);
@@ -1355,6 +1531,7 @@ async function abandonGame(){
 /* ── LOBBY ──────────────────────────────────────────── */
 function goLobby(){
   stopPoll();
+  stopPresenceHeartbeat();
   stopQueueMatch();
   gameId=null; myPid=null; oppPid=null; gs=null; pendingInvite=null;
   document.getElementById('invite-box').style.display='none';
