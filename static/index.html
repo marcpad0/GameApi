@@ -493,6 +493,7 @@ const DEFAULT_CARD_THEME = 'napoletane';
 const GHOST_ROOM_TTL_MS = 60 * 1000;
 const GHOST_CLEANUP_INTERVAL_MS = 15 * 1000;
 const PRESENCE_HEARTBEAT_MS = 25 * 1000;
+const TRICK_REVEAL_DELAY_MS = 3200;
 
 function persistCardTheme(theme){
   const safeTheme = CARD_THEMES[theme] ? theme : DEFAULT_CARD_THEME;
@@ -516,6 +517,10 @@ function lbl(c)     { return `${RANK_LABEL[c.rank]}${SUIT_ICON[c.suit]}`; }
 function trickWinner(c1,c2,leadSuit,bSuit){
   function score(c){ return c.suit===bSuit?100+POWER[c.rank]:c.suit===leadSuit?POWER[c.rank]:-1; }
   return score(c2)>score(c1)?1:0;
+}
+
+function wait(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function initState(p1id, p2id){
@@ -1277,12 +1282,18 @@ async function playCard(card){
     gs.current= oppPid;
     await persist('play',desc);
   } else {
-    // Secondo a giocare – risolvi trick
+    // Secondo a giocare – mostra entrambe le carte per un attimo, poi risolvi.
     const t  = gs.trick;
     const w  = trickWinner(t[0].card, t[1].card, t[0].card.suit, gs.briscola.suit);
     const winnerPid  = t[w].pid;
     const loserPid   = t[1-w].pid;
     const pts = cardPts(t[0].card)+cardPts(t[1].card);
+
+    // Pause the turn while both cards are visible on the table.
+    gs.current = null;
+    await persist('play',desc);
+    renderBoard();
+    await wait(TRICK_REVEAL_DELAY_MS);
 
     gs.scores[winnerPid]  = (gs.scores[winnerPid]||0)+pts;
     gs.captured[winnerPid]=[...(gs.captured[winnerPid]||[]),t[0].card,t[1].card];
