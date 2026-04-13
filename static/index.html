@@ -593,8 +593,8 @@ function showScreen(id){
     stopPoll();
     stopPresenceHeartbeat();
   }
-  if(id==='lobby') startGhostCleanupWatcher();
-  else stopGhostCleanupWatcher();
+  // Keep cleanup active across the app, not only in lobby.
+  startGhostCleanupWatcher();
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
@@ -714,6 +714,7 @@ window.addEventListener('load', ()=>{
   useInternalAuth();
   const inv = parseInvite();
   syncApiKeyFromInvite();
+  startGhostCleanupWatcher();
   const displayInput = document.getElementById('inp-display-name');
   if(displayInput) displayInput.value = myName;
   const settingsSelect = document.getElementById('sel-card-theme');
@@ -722,6 +723,41 @@ window.addEventListener('load', ()=>{
     afterLogin();
     return;
   }
+});
+
+function isGameScreenActive(){
+  const gameScreen = document.getElementById('screen-game');
+  return !!gameScreen && gameScreen.classList.contains('active');
+}
+
+async function resyncGameAfterVisibilityRestore(){
+  if(!isGameScreenActive() || !gameId || !gs || gs.phase !== 'playing') return;
+  const synced = await syncState();
+  if(synced) renderBoard();
+  startPoll();
+  startPresenceHeartbeat();
+}
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    stopPoll();
+    stopPresenceHeartbeat();
+    return;
+  }
+
+  runGhostCleanupWatcherTick();
+  resyncGameAfterVisibilityRestore();
+});
+
+window.addEventListener('focus', ()=>{
+  runGhostCleanupWatcherTick();
+  resyncGameAfterVisibilityRestore();
+});
+
+window.addEventListener('beforeunload', ()=>{
+  stopPoll();
+  stopPresenceHeartbeat();
+  stopGhostCleanupWatcher();
 });
 
 /* ── MATCHMAKING ────────────────────────────────── */
