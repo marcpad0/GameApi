@@ -538,6 +538,7 @@ function latestStateFromMoves(moves){
   let latest = null;
   let latestMs = -Infinity;
   for(const m of list){
+    if(!m?.data?.state) continue;
     const ms = tsMs(m?.timestamp);
     if(!Number.isFinite(ms)) continue;
     if(ms >= latestMs){
@@ -667,6 +668,8 @@ let presenceTimer = null;
 let presenceInFlight = false;
 let lastSeenByPlayer = {};
 let botThinking = false;
+let opponentInactivityResetAtMs = 0;
+let pageWasHidden = false;
 
 /* ── API ─────────────────────────────────────────── */
 async function api(method, path, body, key){
@@ -834,6 +837,10 @@ function isGameScreenActive(){
   return !!gameScreen && gameScreen.classList.contains('active');
 }
 
+function resetOpponentInactivityCountdown(){
+  opponentInactivityResetAtMs = Date.now();
+}
+
 function ensureRuntimeStateShape(){
   if(!gs || typeof gs !== 'object') return;
   if(!gs.lockedOutPlayers || typeof gs.lockedOutPlayers !== 'object' || Array.isArray(gs.lockedOutPlayers)){
@@ -861,18 +868,25 @@ async function resyncGameAfterVisibilityRestore(){
   const synced = await syncState();
   if(!synced) return;
   if(enforceCurrentPlayerLockout()) return;
+  if(gs.phase==='playing') startPresenceHeartbeat();
   await maybeActivateBotForInactiveOpponent();
   renderBoard();
   startPoll();
-  if(gs.phase==='playing') startPresenceHeartbeat();
   await maybeBotPlayTurn();
 }
 
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){
+    pageWasHidden = true;
     stopPoll();
     stopPresenceHeartbeat();
     return;
+  }
+
+  if(pageWasHidden){
+    // Player returned before timeout: restart the inactivity countdown from now.
+    resetOpponentInactivityCountdown();
+    pageWasHidden = false;
   }
 
   runGhostCleanupWatcherTick();
@@ -880,6 +894,10 @@ document.addEventListener('visibilitychange', ()=>{
 });
 
 window.addEventListener('focus', ()=>{
+  if(pageWasHidden && !document.hidden){
+    resetOpponentInactivityCountdown();
+    pageWasHidden = false;
+  }
   runGhostCleanupWatcherTick();
   resyncGameAfterVisibilityRestore();
 });
@@ -1362,6 +1380,8 @@ async function startGameSession(gid, myPidVal, oppPidVal, role){
   const ok = await syncState();
   if(!ok) return;
   if(enforceCurrentPlayerLockout()) return;
+  resetOpponentInactivityCountdown();
+  pageWasHidden = false;
 
   showScreen('game');
   renderBoard();
@@ -1377,13 +1397,13 @@ async function syncState(){
   try{
     const md = await api('GET',`/games/${gameId}/moves`);
     if(!md.moves.length){ toast('Stato partita non trovato','err'); return false; }
-    md.moves.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    lastSeenByPlayer = collectLastSeenByPlayer(md.moves);
-    const last=md.moves[md.moves.length-1];
-    if(!last.data?.state){ toast('Stato non valido','err'); return false; }
-    gs = last.data.state;
+    const moves = [...md.moves].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    lastSeenByPlayer = collectLastSeenByPlayer(moves);
+    const latestStateMove = [...moves].reverse().find(m => m?.data?.state);
+    if(!latestStateMove){ toast('Stato non valido','err'); return false; }
+    gs = latestStateMove.data.state;
     ensureRuntimeStateShape();
-    renderMovesLog(md.moves);
+    renderMovesLog(moves);
     return true;
   }catch(e){
     const msg = (e?.message || '').toLowerCase();
@@ -1444,7 +1464,8 @@ async function maybeActivateBotForInactiveOpponent(){
 
   const oppLastSeenMs = lastSeenByPlayer[oppPid];
   if(!Number.isFinite(oppLastSeenMs)) return false;
-  const inactiveMs = Date.now() - oppLastSeenMs;
+  const inactivityStartMs = Math.max(oppLastSeenMs, opponentInactivityResetAtMs || 0);
+  const inactiveMs = Date.now() - inactivityStartMs;
   if(inactiveMs < PLAYER_INACTIVE_TIMEOUT_MS) return false;
 
   ensureRuntimeStateShape();
@@ -1587,7 +1608,8 @@ async function sendPresenceHeartbeat(){
   try{
     await api('POST',`/games/${gameId}/moves`,{
       playerId: myPid,
-      data: { type:'presence', description:'heartbeat', state: gs }
+      // Presence events must not carry full game state to avoid stale overwrites.
+      data: { type:'presence', description:'heartbeat' }
     });
   }catch(_){
     // Best effort heartbeat: non bloccare la sessione di gioco.
@@ -1790,6 +1812,8 @@ function goLobby(){
   stopQueueMatch();
   botThinking = false;
   lastSeenByPlayer = {};
+  opponentInactivityResetAtMs = 0;
+  pageWasHidden = false;
   gameId=null; myPid=null; oppPid=null; gs=null; pendingInvite=null;
   document.getElementById('invite-box').style.display='none';
   document.getElementById('hdr-game').textContent='';

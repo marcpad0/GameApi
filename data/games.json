@@ -55157,5 +55157,1584 @@
     "status": "finished",
     "createdAt": "2026-04-13T10:33:06.061Z",
     "updatedAt": "2026-04-13T10:33:08.067Z"
+  },
+  {
+    "id": "3206fede-feca-4d44-935c-d113f5854608",
+    "name": "[Briscola][Queue] Giocatore vs Frank_ma",
+    "ownerId": "ecf51eff-2808-499f-8416-e59a91d0b1e1",
+    "players": [
+      {
+        "id": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "name": "Giocatore",
+        "joinedAt": "2026-04-13T13:05:15.140Z"
+      },
+      {
+        "id": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "name": "In attesa…",
+        "joinedAt": "2026-04-13T13:05:15.283Z"
+      }
+    ],
+    "moves": [
+      {
+        "id": "a022673e-9239-4685-a45c-62a4ec5792d2",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "init",
+          "description": "Partita casuale in coda",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "spade",
+                "rank": "3"
+              },
+              {
+                "suit": "coppe",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "bastoni",
+                  "rank": "3"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "bastoni",
+                  "rank": "6"
+                },
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 0,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "lead": null,
+            "phase": "playing",
+            "winner": null,
+            "round": 0,
+            "lockedOutPlayers": {},
+            "bot": {
+              "enabled": false,
+              "replacedPid": null,
+              "controllerPid": null,
+              "activatedAt": null
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:05:15.368Z"
+      },
+      {
+        "id": "5be64969-c883-4632-a1b7-1a870665012b",
+        "playerId": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "data": {
+          "type": "join",
+          "description": "Frank_ma si unisce alla partita",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "spade",
+                "rank": "3"
+              },
+              {
+                "suit": "coppe",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "bastoni",
+                  "rank": "3"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "bastoni",
+                  "rank": "6"
+                },
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 0,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "lead": null,
+            "phase": "playing",
+            "winner": null,
+            "round": 0,
+            "lockedOutPlayers": {},
+            "bot": {
+              "enabled": false,
+              "replacedPid": null,
+              "controllerPid": null,
+              "activatedAt": null
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:05:16.056Z"
+      },
+      {
+        "id": "1e01fb70-0cbd-4cd9-9d26-688b592c4af0",
+        "playerId": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:05:16.205Z"
+      },
+      {
+        "id": "5c7d22ad-c2b2-4778-855a-9a50dda4d911",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:05:18.354Z"
+      },
+      {
+        "id": "3db332a8-f93d-425c-8c57-5e3a68661771",
+        "playerId": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:05:25.009Z"
+      },
+      {
+        "id": "d6d161bb-6a51-40fa-8ae3-1671d0b89a69",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:05:43.348Z"
+      },
+      {
+        "id": "5eb2eeec-612c-4426-a9be-855e34994c89",
+        "playerId": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:05:49.985Z"
+      },
+      {
+        "id": "39c69b73-e1b9-4c90-a20c-566d6bb650af",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:06:08.356Z"
+      },
+      {
+        "id": "7759852b-379c-4492-8280-bc99e1ef66bb",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:06:33.385Z"
+      },
+      {
+        "id": "9f7afe04-a87b-446e-b744-c8dcd4b9d3e6",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "bot_takeover",
+          "description": "Avversario assente da 60s: entra il BOT",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "spade",
+                "rank": "3"
+              },
+              {
+                "suit": "coppe",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "bastoni",
+                  "rank": "3"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "bastoni",
+                  "rank": "6"
+                },
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 0,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "lead": null,
+            "phase": "playing",
+            "winner": null,
+            "round": 0,
+            "lockedOutPlayers": {
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": {
+                "at": "2026-04-13T13:06:50.717Z",
+                "reason": "inactive_timeout"
+              }
+            },
+            "bot": {
+              "enabled": true,
+              "replacedPid": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+              "controllerPid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+              "activatedAt": "2026-04-13T13:06:50.717Z"
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:06:50.933Z"
+      },
+      {
+        "id": "38b2cfd6-b89f-4396-b619-86d5a60f49d6",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "play",
+          "description": "Giocatore gioca 3🪄",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "spade",
+                "rank": "3"
+              },
+              {
+                "suit": "coppe",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "bastoni",
+                  "rank": "6"
+                },
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [
+              {
+                "pid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+                "card": {
+                  "suit": "bastoni",
+                  "rank": "3"
+                }
+              }
+            ],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 0,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+            "lead": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "phase": "playing",
+            "winner": null,
+            "round": 0,
+            "lockedOutPlayers": {
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": {
+                "at": "2026-04-13T13:06:50.717Z",
+                "reason": "inactive_timeout"
+              }
+            },
+            "bot": {
+              "enabled": true,
+              "replacedPid": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+              "controllerPid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+              "activatedAt": "2026-04-13T13:06:50.717Z"
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:06:53.606Z"
+      },
+      {
+        "id": "15346079-2e49-4444-a46f-3e2d084891d0",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:06:53.692Z"
+      },
+      {
+        "id": "14f995b0-4038-45e7-bcca-82e46a2fcb7c",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "play",
+          "description": "Giocatore gioca 3🪄",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "spade",
+                "rank": "3"
+              },
+              {
+                "suit": "coppe",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "bastoni",
+                  "rank": "6"
+                },
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [
+              {
+                "pid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+                "card": {
+                  "suit": "bastoni",
+                  "rank": "3"
+                }
+              }
+            ],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 0,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+            "lead": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "phase": "playing",
+            "winner": null,
+            "round": 0,
+            "lockedOutPlayers": {
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": {
+                "at": "2026-04-13T13:06:50.717Z",
+                "reason": "inactive_timeout"
+              }
+            },
+            "bot": {
+              "enabled": true,
+              "replacedPid": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+              "controllerPid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+              "activatedAt": "2026-04-13T13:06:50.717Z"
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:06:55.760Z"
+      },
+      {
+        "id": "28fcf920-8f12-4a73-94b1-c49998f84521",
+        "playerId": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "data": {
+          "type": "play",
+          "description": "BOT gioca 6🪄",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "spade",
+                "rank": "3"
+              },
+              {
+                "suit": "coppe",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [
+              {
+                "pid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+                "card": {
+                  "suit": "bastoni",
+                  "rank": "3"
+                }
+              },
+              {
+                "pid": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+                "card": {
+                  "suit": "bastoni",
+                  "rank": "6"
+                }
+              }
+            ],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 0,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": null,
+            "lead": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "phase": "playing",
+            "winner": null,
+            "round": 0,
+            "lockedOutPlayers": {
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": {
+                "at": "2026-04-13T13:06:50.717Z",
+                "reason": "inactive_timeout"
+              }
+            },
+            "bot": {
+              "enabled": true,
+              "replacedPid": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+              "controllerPid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+              "activatedAt": "2026-04-13T13:06:50.717Z"
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:06:59.580Z"
+      },
+      {
+        "id": "66c00a97-3d2b-47dd-94f6-c0c71631b81f",
+        "playerId": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+        "data": {
+          "type": "trick",
+          "description": "BOT gioca 6🪄 → Giocatore vince il trick (10 pt)",
+          "state": {
+            "v": 1,
+            "deck": [
+              {
+                "suit": "denari",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "5"
+              },
+              {
+                "suit": "coppe",
+                "rank": "fante"
+              },
+              {
+                "suit": "spade",
+                "rank": "4"
+              },
+              {
+                "suit": "coppe",
+                "rank": "4"
+              },
+              {
+                "suit": "spade",
+                "rank": "7"
+              },
+              {
+                "suit": "denari",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "fante"
+              },
+              {
+                "suit": "coppe",
+                "rank": "as"
+              },
+              {
+                "suit": "denari",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "denari",
+                "rank": "re"
+              },
+              {
+                "suit": "denari",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "4"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "re"
+              },
+              {
+                "suit": "spade",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "3"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "as"
+              },
+              {
+                "suit": "spade",
+                "rank": "5"
+              },
+              {
+                "suit": "denari",
+                "rank": "6"
+              },
+              {
+                "suit": "coppe",
+                "rank": "5"
+              },
+              {
+                "suit": "spade",
+                "rank": "cavallo"
+              },
+              {
+                "suit": "spade",
+                "rank": "6"
+              },
+              {
+                "suit": "denari",
+                "rank": "7"
+              },
+              {
+                "suit": "coppe",
+                "rank": "re"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "2"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "as"
+              },
+              {
+                "suit": "bastoni",
+                "rank": "fante"
+              },
+              {
+                "suit": "denari",
+                "rank": "5"
+              }
+            ],
+            "hands": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "coppe",
+                  "rank": "2"
+                },
+                {
+                  "suit": "denari",
+                  "rank": "3"
+                },
+                {
+                  "suit": "spade",
+                  "rank": "3"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": [
+                {
+                  "suit": "spade",
+                  "rank": "fante"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "6"
+                },
+                {
+                  "suit": "coppe",
+                  "rank": "cavallo"
+                }
+              ]
+            },
+            "briscola": {
+              "suit": "denari",
+              "rank": "5"
+            },
+            "trick": [],
+            "scores": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": 10,
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": 0
+            },
+            "captured": {
+              "36d57b73-5be1-4050-8981-f672b2ccdd6f": [
+                {
+                  "suit": "bastoni",
+                  "rank": "3"
+                },
+                {
+                  "suit": "bastoni",
+                  "rank": "6"
+                }
+              ],
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": []
+            },
+            "current": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+            "lead": null,
+            "phase": "playing",
+            "winner": null,
+            "round": 1,
+            "lockedOutPlayers": {
+              "8e18c7a7-b417-4c1b-9cde-68ab034ffba9": {
+                "at": "2026-04-13T13:06:50.717Z",
+                "reason": "inactive_timeout"
+              }
+            },
+            "bot": {
+              "enabled": true,
+              "replacedPid": "8e18c7a7-b417-4c1b-9cde-68ab034ffba9",
+              "controllerPid": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+              "activatedAt": "2026-04-13T13:06:50.717Z"
+            }
+          }
+        },
+        "timestamp": "2026-04-13T13:07:02.896Z"
+      },
+      {
+        "id": "6c5a03b6-19a8-4853-960b-204d4c2552b8",
+        "playerId": "36d57b73-5be1-4050-8981-f672b2ccdd6f",
+        "data": {
+          "type": "presence",
+          "description": "heartbeat"
+        },
+        "timestamp": "2026-04-13T13:07:08.170Z"
+      }
+    ],
+    "status": "active",
+    "createdAt": "2026-04-13T13:05:15.061Z",
+    "updatedAt": "2026-04-13T13:07:08.170Z"
   }
 ]
