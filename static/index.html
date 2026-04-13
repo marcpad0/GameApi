@@ -366,8 +366,13 @@
   <div class="panel">
     <h2>⚙️ Impostazioni</h2>
     <p style="color:#aaa;font-size:.88rem;margin-bottom:12px;">
-      Seleziona quale tipo di carte vuoi vedere sul tavolo.
+      Gestisci il nome giocatore e seleziona il tipo di carte da vedere sul tavolo.
     </p>
+    <div class="col">
+      <label>Nome giocatore</label>
+      <input type="text" id="inp-settings-name" placeholder="es. mario_rossi" />
+    </div>
+    <div class="mt1"></div>
     <div class="col">
       <label>Tipo carte</label>
       <select id="sel-card-theme">
@@ -484,6 +489,8 @@ const SUIT_ICON  = {bastoni:'🪄',coppe:'🏆',denari:'🪙',spade:'⚔️'};
 const RANK_LABEL = {as:'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7',fante:'F',cavallo:'C',re:'R'};
 const POINTS     = {as:11,'3':10,re:4,cavallo:3,fante:2,'2':0,'4':0,'5':0,'6':0,'7':0};
 const POWER      = {as:9,'3':8,re:7,cavallo:6,fante:5,'7':4,'6':3,'5':2,'4':1,'2':0};
+const PLAYER_NAME_STORAGE_KEY = 'bris_name';
+const DEFAULT_PLAYER_NAME = 'Giocatore';
 const CARD_THEME_STORAGE_KEY = 'bris_card_theme';
 const CARD_THEMES = {
   napoletane: { label:'Carte Napoletane', dir:'carte_napoletane_nome_corretto' },
@@ -502,6 +509,48 @@ function persistCardTheme(theme){
   const safeTheme = CARD_THEMES[theme] ? theme : DEFAULT_CARD_THEME;
   localStorage.setItem(CARD_THEME_STORAGE_KEY, safeTheme);
   return safeTheme;
+}
+
+function getStoredDisplayName(){
+  const raw = localStorage.getItem(PLAYER_NAME_STORAGE_KEY) || '';
+  return raw.trim();
+}
+
+function persistDisplayName(name){
+  const safeName = String(name || '').trim();
+  if(!safeName) return false;
+
+  myName = safeName;
+  localStorage.setItem(PLAYER_NAME_STORAGE_KEY, safeName);
+
+  const authInput = document.getElementById('inp-display-name');
+  if(authInput && authInput.value !== safeName) authInput.value = safeName;
+
+  const settingsInput = document.getElementById('inp-settings-name');
+  if(settingsInput && settingsInput.value !== safeName) settingsInput.value = safeName;
+
+  const hdrUser = document.getElementById('hdr-user');
+  if(hdrUser) hdrUser.textContent = `👤 ${myName}`;
+
+  return true;
+}
+
+function initDisplayNameAutosave(){
+  const displayInput = document.getElementById('inp-display-name');
+  if(!displayInput) return;
+
+  let saveTimer = null;
+  const saveTypedName = () => {
+    const typedName = displayInput.value.trim();
+    if(typedName) persistDisplayName(typedName);
+  };
+
+  displayInput.addEventListener('input', () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveTypedName, 300);
+  });
+
+  displayInput.addEventListener('blur', saveTypedName);
 }
 
 function buildDeck() {
@@ -647,7 +696,7 @@ function initState(p1id, p2id){
 /* ── App State ──────────────────────────────────── */
 const INTERNAL_API_KEY = 'f9d64788-71e9-4b54-9d88-42c4005feaa91eab062d0cf54ddbaf3cd8c620293e29';
 let apiKey   = INTERNAL_API_KEY;
-let myName   = localStorage.getItem('bris_name') || 'Giocatore';
+let myName   = getStoredDisplayName() || DEFAULT_PLAYER_NAME;
 let gameId   = null;
 let myPid    = null;  // player ID in THIS game
 let oppPid   = null;
@@ -719,19 +768,41 @@ function getFallbackCardDir(theme = cardTheme){
 function openSettings(){
   const sel = document.getElementById('sel-card-theme');
   if(sel) sel.value = cardTheme;
+  const settingsName = document.getElementById('inp-settings-name');
+  if(settingsName) settingsName.value = myName;
   showScreen('settings');
 }
 
 function saveSettings(){
+  const settingsName = document.getElementById('inp-settings-name');
+  const nextName = (settingsName?.value || '').trim();
+  if(!nextName){
+    toast('Inserisci un nome giocatore valido','err');
+    return;
+  }
+
+  const nameChanged = nextName !== myName;
+  if(nameChanged) persistDisplayName(nextName);
+
   const sel = document.getElementById('sel-card-theme');
   const nextTheme = sel?.value || DEFAULT_CARD_THEME;
   if(!CARD_THEMES[nextTheme]){
     toast('Tipo di carte non valido','err');
     return;
   }
+
+  const themeChanged = nextTheme !== cardTheme;
   cardTheme = persistCardTheme(nextTheme);
   if(gs) renderBoard();
-  toast(`Mazzo impostato: ${CARD_THEMES[cardTheme].label}`,'ok');
+
+  if(nameChanged && themeChanged){
+    toast('Impostazioni salvate: nome e mazzo aggiornati','ok');
+  } else if(nameChanged){
+    toast('Nome giocatore aggiornato','ok');
+  } else {
+    toast(`Mazzo impostato: ${CARD_THEMES[cardTheme].label}`,'ok');
+  }
+
   goLobby();
 }
 
@@ -739,11 +810,7 @@ function saveSettings(){
 function saveDisplayName(){
   const nameInput = document.getElementById('inp-display-name');
   if(!nameInput) return;
-  const name = nameInput.value.trim();
-  if(name){
-    myName = name;
-    localStorage.setItem('bris_name', myName);
-  }
+  persistDisplayName(nameInput.value);
 }
 
 function useInternalAuth(){
@@ -823,11 +890,24 @@ window.addEventListener('load', ()=>{
   const inv = parseInvite();
   syncApiKeyFromInvite();
   startGhostCleanupWatcher();
+
   const displayInput = document.getElementById('inp-display-name');
   if(displayInput) displayInput.value = myName;
+
+  const settingsName = document.getElementById('inp-settings-name');
+  if(settingsName) settingsName.value = myName;
+
   const settingsSelect = document.getElementById('sel-card-theme');
   if(settingsSelect) settingsSelect.value = cardTheme;
+
+  initDisplayNameAutosave();
+
   if(inv && (inv.as||'p2')==='p2'){
+    afterLogin();
+    return;
+  }
+
+  if(getStoredDisplayName()){
     afterLogin();
     return;
   }
