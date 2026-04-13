@@ -538,7 +538,7 @@ function latestStateFromMoves(moves){
   let latest = null;
   let latestMs = -Infinity;
   for(const m of list){
-    if(!m?.data?.state) continue;
+    if(!m?.data?.state || m?.data?.type === 'presence') continue;
     const ms = tsMs(m?.timestamp);
     if(!Number.isFinite(ms)) continue;
     if(ms >= latestMs){
@@ -668,6 +668,7 @@ let presenceTimer = null;
 let presenceInFlight = false;
 let lastSeenByPlayer = {};
 let botThinking = false;
+let playPrecheckInFlight = false;
 let opponentInactivityResetAtMs = 0;
 let pageWasHidden = false;
 
@@ -714,7 +715,7 @@ function getFallbackCardDir(theme = cardTheme){
   const alt = theme === 'napoletane' ? 'bergamasche' : 'napoletane';
   return getCardDir(alt);
 }
-1
+
 function openSettings(){
   const sel = document.getElementById('sel-card-theme');
   if(sel) sel.value = cardTheme;
@@ -864,6 +865,7 @@ function enforceCurrentPlayerLockout(){
 }
 
 async function resyncGameAfterVisibilityRestore(){
+  if(posting || botThinking || playPrecheckInFlight) return;
   if(!isGameScreenActive() || !gameId || !gs) return;
   const synced = await syncState();
   if(!synced) return;
@@ -1399,7 +1401,7 @@ async function syncState(){
     if(!md.moves.length){ toast('Stato partita non trovato','err'); return false; }
     const moves = [...md.moves].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
     lastSeenByPlayer = collectLastSeenByPlayer(moves);
-    const latestStateMove = [...moves].reverse().find(m => m?.data?.state);
+    const latestStateMove = [...moves].reverse().find(m => m?.data?.state && m?.data?.type !== 'presence');
     if(!latestStateMove){ toast('Stato non valido','err'); return false; }
     gs = latestStateMove.data.state;
     ensureRuntimeStateShape();
@@ -1586,8 +1588,35 @@ async function playCardAs(actorPid, card){
 }
 
 async function playCard(card){
-  if(posting){ toast('Attendere…','info'); return; }
-  if(!isMyTurn()){ toast('Non è il tuo turno!','err'); return; }
+  if(posting || botThinking || playPrecheckInFlight){ toast('Attendere…','info'); return; }
+  playPrecheckInFlight = true;
+
+  const synced = await syncState();
+  if(!synced){
+    playPrecheckInFlight = false;
+    return;
+  }
+  if(enforceCurrentPlayerLockout()){
+    playPrecheckInFlight = false;
+    return;
+  }
+
+  renderBoard();
+  if(!isMyTurn()){
+    toast('Non è il tuo turno!','err');
+    playPrecheckInFlight = false;
+    return;
+  }
+
+  const hand = gs.hands?.[myPid] || [];
+  const hasCard = hand.some(c => c.suit===card.suit && c.rank===card.rank);
+  if(!hasCard){
+    toast('Carta non disponibile (stato aggiornato).','info');
+    playPrecheckInFlight = false;
+    return;
+  }
+
+  playPrecheckInFlight = false;
   await playCardAs(myPid, card);
 }
 
