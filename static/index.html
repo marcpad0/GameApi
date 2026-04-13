@@ -494,6 +494,9 @@ const GHOST_ROOM_TTL_MS = 60 * 1000;
 const GHOST_CLEANUP_INTERVAL_MS = 15 * 1000;
 const PRESENCE_HEARTBEAT_MS = 25 * 1000;
 const TRICK_REVEAL_DELAY_MS = 3200;
+const PLAYER_INACTIVE_TIMEOUT_MS = 60 * 1000;
+const BOT_THINK_MIN_MS = 900;
+const BOT_THINK_MAX_MS = 1600;
 
 function persistCardTheme(theme){
   const safeTheme = CARD_THEMES[theme] ? theme : DEFAULT_CARD_THEME;
@@ -523,6 +526,98 @@ function wait(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function tsMs(value){
+  const ms = Date.parse(value || '');
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function latestStateFromMoves(moves){
+  const list = Array.isArray(moves) ? moves : [];
+  if(!list.length) return null;
+
+  let latest = null;
+  let latestMs = -Infinity;
+  for(const m of list){
+    const ms = tsMs(m?.timestamp);
+    if(!Number.isFinite(ms)) continue;
+    if(ms >= latestMs){
+      latest = m;
+      latestMs = ms;
+    }
+  }
+  return latest?.data?.state || null;
+}
+
+function collectLastSeenByPlayer(moves){
+  const seen = {};
+  for(const m of (Array.isArray(moves) ? moves : [])){
+    const pid = m?.playerId;
+    if(!pid) continue;
+    const ms = tsMs(m?.timestamp);
+    if(!Number.isFinite(ms)) continue;
+    const prev = seen[pid];
+    seen[pid] = Number.isFinite(prev) ? Math.max(prev, ms) : ms;
+  }
+  return seen;
+}
+
+function getLockedOutPlayers(state = gs){
+  const lockouts = state?.lockedOutPlayers;
+  if(!lockouts || typeof lockouts !== 'object' || Array.isArray(lockouts)) return {};
+  return lockouts;
+}
+
+function isLockedOutPlayer(pid, state = gs){
+  if(!pid) return false;
+  return !!getLockedOutPlayers(state)[pid];
+}
+
+function isBotPlayer(pid, state = gs){
+  return !!(pid && state?.bot?.enabled && state?.bot?.replacedPid === pid);
+}
+
+function isOpponentBotActive(state = gs){
+  return isBotPlayer(oppPid, state);
+}
+
+// The bot chooses using only its own hand plus table cards (no enemy hand reads).
+function pickBotCard(hand, trick, briscolaSuit){
+  const cards = Array.isArray(hand) ? [...hand] : [];
+  if(!cards.length) return null;
+
+  const cost = c => (POINTS[c.rank] || 0) * 100 + (POWER[c.rank] || 0);
+  const leadCard = trick?.[0]?.card || null;
+
+  if(!leadCard){
+    cards.sort((a,b)=>cost(a)-cost(b));
+    return cards[0];
+  }
+
+  const canBeat = (card) => {
+    if(leadCard.suit === briscolaSuit){
+      return card.suit === briscolaSuit && POWER[card.rank] > POWER[leadCard.rank];
+    }
+    if(card.suit === briscolaSuit) return true;
+    return card.suit === leadCard.suit && POWER[card.rank] > POWER[leadCard.rank];
+  };
+
+  const winners = cards.filter(canBeat);
+  const pool = winners.length ? winners : cards;
+  pool.sort((a,b)=>cost(a)-cost(b));
+  return pool[0];
+}
+
+function canCurrentUserResumeGame(game){
+  const players = Array.isArray(game?.players) ? game.players : [];
+  if(!players.length) return true;
+
+  const me = players.find(p => normPlayerName(p?.name || '') === normPlayerName(myName));
+  if(!me) return true;
+
+  const state = latestStateFromMoves(game?.moves);
+  return !isLockedOutPlayer(me.id, state);
+}
+
 function initState(p1id, p2id){
   const deck=buildDeck();
   return {
@@ -537,7 +632,14 @@ function initState(p1id, p2id){
     lead:     null,
     phase:    'playing',
     winner:   null,  // pid | 'draw' | null
-    round:    0
+    round:    0,
+    lockedOutPlayers: {},
+    bot: {
+      enabled: false,
+      replacedPid: null,
+      controllerPid: null,
+      activatedAt: null
+    }
   };
 }
 
@@ -563,6 +665,8 @@ let ghostCleanupTimer = null;
 let ghostCleanupRunning = false;
 let presenceTimer = null;
 let presenceInFlight = false;
+let lastSeenByPlayer = {};
+let botThinking = false;
 
 /* ── API ─────────────────────────────────────────── */
 async function api(method, path, body, key){
@@ -730,12 +834,38 @@ function isGameScreenActive(){
   return !!gameScreen && gameScreen.classList.contains('active');
 }
 
+function ensureRuntimeStateShape(){
+  if(!gs || typeof gs !== 'object') return;
+  if(!gs.lockedOutPlayers || typeof gs.lockedOutPlayers !== 'object' || Array.isArray(gs.lockedOutPlayers)){
+    gs.lockedOutPlayers = {};
+  }
+  if(!gs.bot || typeof gs.bot !== 'object' || Array.isArray(gs.bot)){
+    gs.bot = {
+      enabled: false,
+      replacedPid: null,
+      controllerPid: null,
+      activatedAt: null
+    };
+  }
+}
+
+function enforceCurrentPlayerLockout(){
+  if(!isLockedOutPlayer(myPid)) return false;
+  toast('Sei rimasto assente per oltre 1 minuto: non puoi rientrare in questa partita.','err');
+  goLobby();
+  return true;
+}
+
 async function resyncGameAfterVisibilityRestore(){
-  if(!isGameScreenActive() || !gameId || !gs || gs.phase !== 'playing') return;
+  if(!isGameScreenActive() || !gameId || !gs) return;
   const synced = await syncState();
-  if(synced) renderBoard();
+  if(!synced) return;
+  if(enforceCurrentPlayerLockout()) return;
+  await maybeActivateBotForInactiveOpponent();
+  renderBoard();
   startPoll();
-  startPresenceHeartbeat();
+  if(gs.phase==='playing') startPresenceHeartbeat();
+  await maybeBotPlayTurn();
 }
 
 document.addEventListener('visibilitychange', ()=>{
@@ -1174,6 +1304,7 @@ async function loadGames(silent = false){
     const gamesToShow = games.filter(g => {
       if(!g || g.status === 'finished') return false;
       if(deletedGhostIds.has(g.id)) return false;
+      if(!canCurrentUserResumeGame(g)) return false;
       const playerCount = playerCountOf(g);
       return playerCount > 0;
     });
@@ -1185,7 +1316,6 @@ async function loadGames(silent = false){
     el.innerHTML='';
     for(const g of gamesToShow){
       const totalPlayers = playerCountOf(g);
-      const realPlayers = realPlayerCountOf(g);
       const moveCount = Array.isArray(g.moves) ? g.moves.length : 0;
       const createdLabel = g.createdAt ? new Date(g.createdAt).toLocaleString('it-IT') : '—';
       const gameName = (typeof g.name === 'string' && g.name.trim()) ? g.name : 'Partita senza nome';
@@ -1223,17 +1353,22 @@ async function startGameSession(gid, myPidVal, oppPidVal, role){
   oppPid  = oppPidVal;
   myRole  = role;
   posting = false;
+  botThinking = false;
+  lastSeenByPlayer = {};
 
   document.getElementById('hdr-game').textContent = `Partita: ${gid.slice(0,10)}…`;
 
   // Load latest state
   const ok = await syncState();
   if(!ok) return;
+  if(enforceCurrentPlayerLockout()) return;
 
   showScreen('game');
   renderBoard();
   startPoll();
-  startPresenceHeartbeat();
+  if(gs.phase==='playing') startPresenceHeartbeat();
+  await maybeActivateBotForInactiveOpponent();
+  await maybeBotPlayTurn();
   if(gs.phase==='finished') { stopPoll(); showWinner(); }
 }
 
@@ -1243,9 +1378,11 @@ async function syncState(){
     const md = await api('GET',`/games/${gameId}/moves`);
     if(!md.moves.length){ toast('Stato partita non trovato','err'); return false; }
     md.moves.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    lastSeenByPlayer = collectLastSeenByPlayer(md.moves);
     const last=md.moves[md.moves.length-1];
     if(!last.data?.state){ toast('Stato non valido','err'); return false; }
     gs = last.data.state;
+    ensureRuntimeStateShape();
     renderMovesLog(md.moves);
     return true;
   }catch(e){
@@ -1273,12 +1410,14 @@ function stopPoll(){
 }
 
 async function pollOnce(){
-  if(posting) return; // don't poll while we're writing
+  if(posting || botThinking) return; // don't poll while we're writing/bot-playing
   const prevCurrent = gs?.current;
   const prevTrick   = gs?.trick?.length;
   const prevPhase   = gs?.phase;
   const synced = await syncState();
   if(!synced) return;
+  if(enforceCurrentPlayerLockout()) return;
+  await maybeActivateBotForInactiveOpponent();
   renderBoard();
   if(gs.phase==='finished' && prevPhase!=='finished'){
     stopPoll(); showWinner(); return;
@@ -1292,83 +1431,154 @@ async function pollOnce(){
       document.getElementById('poll-ind').style.display='flex';
     }
   }
+  await maybeBotPlayTurn();
 }
 
 function isMyTurn(){ return gs && gs.current===myPid && gs.phase==='playing'; }
 
 /* ── PLAY CARD ──────────────────────────────────── */
+async function maybeActivateBotForInactiveOpponent(){
+  if(!gs || gs.phase!=='playing' || !myPid || !oppPid) return false;
+  if(isLockedOutPlayer(myPid) || isLockedOutPlayer(oppPid)) return false;
+  if(isOpponentBotActive()) return false;
+
+  const oppLastSeenMs = lastSeenByPlayer[oppPid];
+  if(!Number.isFinite(oppLastSeenMs)) return false;
+  const inactiveMs = Date.now() - oppLastSeenMs;
+  if(inactiveMs < PLAYER_INACTIVE_TIMEOUT_MS) return false;
+
+  ensureRuntimeStateShape();
+  const nowIso = new Date().toISOString();
+  gs.lockedOutPlayers = {
+    ...getLockedOutPlayers(gs),
+    [oppPid]: { at: nowIso, reason: 'inactive_timeout' }
+  };
+  gs.bot = {
+    enabled: true,
+    replacedPid: oppPid,
+    controllerPid: myPid,
+    activatedAt: nowIso
+  };
+
+  const inactiveSec = Math.floor(inactiveMs / 1000);
+  await persist('bot_takeover', `Avversario assente da ${inactiveSec}s: entra il BOT`);
+  renderBoard();
+  toast('Avversario assente da oltre 1 minuto: ora giochi contro il BOT.','info');
+  return true;
+}
+
+async function maybeBotPlayTurn(){
+  if(!gs || gs.phase!=='playing') return;
+  if(!isOpponentBotActive() || gs.current!==oppPid) return;
+  if(posting || botThinking) return;
+
+  botThinking = true;
+  try{
+    const delay = BOT_THINK_MIN_MS + Math.floor(Math.random() * (BOT_THINK_MAX_MS - BOT_THINK_MIN_MS + 1));
+    await wait(delay);
+
+    const synced = await syncState();
+    if(!synced) return;
+    if(enforceCurrentPlayerLockout()) return;
+    if(!isOpponentBotActive() || gs.phase!=='playing' || gs.current!==oppPid || posting) return;
+
+    const botHand = gs.hands?.[oppPid] || [];
+    const botCard = pickBotCard(botHand, gs.trick || [], gs.briscola?.suit);
+    if(!botCard) return;
+
+    await playCardAs(oppPid, botCard);
+  }finally{
+    botThinking = false;
+  }
+}
+
+async function playCardAs(actorPid, card){
+  if(posting || !gs || gs.phase!=='playing') return false;
+  if(!actorPid || !card || gs.current!==actorPid) return false;
+
+  posting = true;
+  stopPoll();
+
+  try{
+    const hand = gs.hands?.[actorPid] || [];
+    const idx = hand.findIndex(c=>c.suit===card.suit&&c.rank===card.rank);
+    if(idx===-1) return false;
+
+    hand.splice(idx,1);
+    gs.trick.push({pid:actorPid, card});
+
+    let desc = `${pname(actorPid)} gioca ${lbl(card)}`;
+
+    if(gs.trick.length===1){
+      gs.lead = actorPid;
+      gs.current = otherOf(actorPid);
+      await persistAs(actorPid, 'play', desc);
+    } else {
+      const t = gs.trick;
+      const w = trickWinner(t[0].card, t[1].card, t[0].card.suit, gs.briscola.suit);
+      const winnerPid = t[w].pid;
+      const loserPid = t[1-w].pid;
+      const pts = cardPts(t[0].card)+cardPts(t[1].card);
+
+      gs.current = null;
+      await persistAs(actorPid, 'play', desc);
+      renderBoard();
+      await wait(TRICK_REVEAL_DELAY_MS);
+
+      gs.scores[winnerPid] = (gs.scores[winnerPid]||0)+pts;
+      gs.captured[winnerPid] = [...(gs.captured[winnerPid]||[]), t[0].card, t[1].card];
+
+      if(gs.deck.length) gs.hands[winnerPid].push(gs.deck.shift());
+      if(gs.deck.length) gs.hands[loserPid].push(gs.deck.shift());
+
+      gs.trick = [];
+      gs.current = winnerPid;
+      gs.lead = null;
+      gs.round++;
+
+      desc += ` → ${pname(winnerPid)} vince il trick (${pts} pt)`;
+
+      if(!gs.hands[myPid].length && !gs.hands[oppPid].length && !gs.deck.length){
+        gs.phase='finished';
+        const sm=gs.scores[myPid]||0, so=gs.scores[oppPid]||0;
+        gs.winner = sm>so?myPid:so>sm?oppPid:'draw';
+      }
+
+      await persistAs(actorPid, 'trick', desc);
+
+      if(gs.phase==='finished'){
+        try{ await api('PUT',`/games/${gameId}`,{status:'finished'}); }catch(_){ }
+      }
+    }
+
+    return true;
+  }finally{
+    posting = false;
+    renderBoard();
+    if(gs.phase==='finished'){
+      stopPoll();
+      showWinner();
+    } else {
+      startPoll();
+    }
+  }
+}
+
 async function playCard(card){
   if(posting){ toast('Attendere…','info'); return; }
   if(!isMyTurn()){ toast('Non è il tuo turno!','err'); return; }
-  posting=true;
-  stopPoll();
+  await playCardAs(myPid, card);
+}
 
-  // Remove card from hand
-  const hand=gs.hands[myPid];
-  const idx=hand.findIndex(c=>c.suit===card.suit&&c.rank===card.rank);
-  if(idx===-1){ posting=false; startPoll(); return; }
-  hand.splice(idx,1);
-  gs.trick.push({pid:myPid, card});
-
-  let desc = `${pname(myPid)} gioca ${lbl(card)}`;
-
-  if(gs.trick.length===1){
-    // Primo a giocare – aspetta avversario
-    gs.lead   = myPid;
-    gs.current= oppPid;
-    await persist('play',desc);
-  } else {
-    // Secondo a giocare – mostra entrambe le carte per un attimo, poi risolvi.
-    const t  = gs.trick;
-    const w  = trickWinner(t[0].card, t[1].card, t[0].card.suit, gs.briscola.suit);
-    const winnerPid  = t[w].pid;
-    const loserPid   = t[1-w].pid;
-    const pts = cardPts(t[0].card)+cardPts(t[1].card);
-
-    // Pause the turn while both cards are visible on the table.
-    gs.current = null;
-    await persist('play',desc);
-    renderBoard();
-    await wait(TRICK_REVEAL_DELAY_MS);
-
-    gs.scores[winnerPid]  = (gs.scores[winnerPid]||0)+pts;
-    gs.captured[winnerPid]=[...(gs.captured[winnerPid]||[]),t[0].card,t[1].card];
-
-    // Draw (winner first)
-    if(gs.deck.length) gs.hands[winnerPid].push(gs.deck.shift());
-    if(gs.deck.length) gs.hands[loserPid].push(gs.deck.shift());
-
-    gs.trick   = [];
-    gs.current = winnerPid;
-    gs.lead    = null;
-    gs.round++;
-
-    desc += ` → ${pname(winnerPid)} vince il trick (${pts} pt)`;
-
-    if(!gs.hands[myPid].length && !gs.hands[oppPid].length && !gs.deck.length){
-      gs.phase='finished';
-      const sm=gs.scores[myPid]||0, so=gs.scores[oppPid]||0;
-      gs.winner = sm>so?myPid:so>sm?oppPid:'draw';
-    }
-
-    await persist('trick',desc);
-
-    if(gs.phase==='finished'){
-      try{ await api('PUT',`/games/${gameId}`,{status:'finished'}); }catch(_){}
-    }
-  }
-
-  posting=false;
-  renderBoard();
-  if(gs.phase==='finished'){ stopPoll(); showWinner(); return; }
-  startPoll();
+async function persistAs(playerId, type, description){
+  await api('POST',`/games/${gameId}/moves`,{
+    playerId,
+    data: { type, description, state: gs }
+  });
 }
 
 async function persist(type, description){
-  await api('POST',`/games/${gameId}/moves`,{
-    playerId: myPid,
-    data: { type, description, state: gs }
-  });
+  await persistAs(myPid, type, description);
 }
 
 async function sendPresenceHeartbeat(){
@@ -1400,26 +1610,21 @@ function stopPresenceHeartbeat(){
 
 function otherOf(pid){ return pid===myPid?oppPid:myPid; }
 function pname(pid){
-  if(!gs) return pid;
-  return pid===myPid ? document.getElementById('lbl-me').textContent
-                     : document.getElementById('lbl-opp').textContent;
+  if(!pid) return 'Giocatore';
+  if(pid===myPid) return myName;
+  if(isBotPlayer(pid)) return 'BOT';
+  return 'Avversario';
 }
 
 /* ── RENDER ──────────────────────────────────────── */
 function renderBoard(){
   if(!gs) return;
 
-  // Fetch player names from game state keys (display)
-  // We'll use labels from DOM (set once at startGame)
-  const myLabel  = myRole==='p1' ? 'Giocatore 1' : 'Giocatore 2';
-  const oppLabel = myRole==='p1' ? 'Giocatore 2' : 'Giocatore 1';
-
-  // Try to get real names from API game data if available
-  // (We set them via the invite flow – just use myName here)
+  const oppName = isOpponentBotActive() ? 'BOT' : 'Avversario';
   document.getElementById('lbl-me').textContent  = myName;
-  document.getElementById('lbl-opp').textContent = myRole==='p1'?'Avversario':'Avversario';
+  document.getElementById('lbl-opp').textContent = oppName;
   document.getElementById('sc-lbl-me').textContent  = myName;
-  document.getElementById('sc-lbl-opp').textContent = 'Avversario';
+  document.getElementById('sc-lbl-opp').textContent = oppName;
 
   // Scores
   document.getElementById('sc-me').textContent  = gs.scores[myPid]||0;
@@ -1467,7 +1672,7 @@ function renderBoard(){
       w.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;';
       const nm=document.createElement('small');
       nm.style.cssText='color:#aaa;font-size:.7rem;';
-      nm.textContent = t.pid===myPid?myName:'Avversario';
+      nm.textContent = pname(t.pid);
       w.appendChild(mkCard(t.card,false,true));
       w.appendChild(nm);
       ta.appendChild(w);
@@ -1526,6 +1731,9 @@ function updateStatus(){
   const poll=document.getElementById('poll-ind');
   if(gs.phase==='finished'){
     msg='🏁 Partita terminata!'; poll.style.display='none';
+  } else if(isOpponentBotActive() && gs.current===oppPid){
+    msg='🤖 Il BOT sta pensando alla sua mossa…';
+    poll.style.display='none';
   } else if(isMyTurn()){
     msg=gs.trick.length===1
       ? '🎴 Rispondi alla carta giocata!'
@@ -1580,6 +1788,8 @@ function goLobby(){
   stopPoll();
   stopPresenceHeartbeat();
   stopQueueMatch();
+  botThinking = false;
+  lastSeenByPlayer = {};
   gameId=null; myPid=null; oppPid=null; gs=null; pendingInvite=null;
   document.getElementById('invite-box').style.display='none';
   document.getElementById('hdr-game').textContent='';
