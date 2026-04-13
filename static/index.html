@@ -3,187 +3,115 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Briscola Multiplayer – GameApi</title>
+  <title>Briscola Multiplayer</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet"/>
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --gold:   #e8b84b;
-      --red:    #c0392b;
-      --blue:   #2980b9;
-      --green:  #1a6b3a;
       --felt:   #0d5c32;
       --dark:   #111;
-      --light:  #f5f0e8;
       --card-w: 72px;
       --card-h: 108px;
     }
+
     body {
-      font-family: 'Georgia', serif;
-      background: #0a0a0a;
-      color: var(--light);
+      font-family: 'Lato', sans-serif;
+      background-color: #0a0a0a;
+      color: #f5f0e8;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
 
-    /* ── Header ── */
-    header {
-      width: 100%;
-      background: linear-gradient(135deg, #1a0a00, #3a1a00);
-      border-bottom: 3px solid var(--gold);
-      padding: 14px 24px;
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 8px;
-      position: sticky; top: 0; z-index: 100;
-    }
-    header h1 { font-size: 2rem; color: var(--gold); letter-spacing: 3px; text-shadow: 0 2px 8px #000; }
-    header .hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-    header small { color: #aaa; font-size: .78rem; }
+    /* ── Navbar ── */
+    .navbar { background: linear-gradient(135deg, #1a0a00, #3a1a00); border-bottom: 3px solid var(--gold); }
+    .navbar-brand { font-family: 'Playfair Display', serif; color: var(--gold) !important; font-size: 1.7rem; letter-spacing: 3px; text-shadow: 0 2px 8px #000; }
 
-    /* ── Screens ── */
-    .screen { display: none; width: 100%; max-width: 860px; padding: 20px; }
-    .screen.active { display: block; }
-
-    /* ── Panel ── */
+    /* ── Panels ── */
     .panel {
       background: linear-gradient(160deg, #1c1c1c, #111);
       border: 1px solid #444; border-radius: 12px;
-      padding: 22px; margin: 18px 0;
+      padding: 22px;
     }
-    h2 { font-size: 1.4rem; color: var(--gold); margin-bottom: .9rem; }
-    h3 { color: var(--gold); margin-bottom: .5rem; }
+    .panel h2, .panel h3 { font-family: 'Playfair Display', serif; color: var(--gold); }
 
     /* ── Inputs ── */
-    input[type=text], select {
-      background: #222; border: 1px solid #555; border-radius: 6px;
-      color: var(--light); padding: 10px 14px; font-size: 1rem; width: 100%;
+    .form-control, .form-select {
+      background: #222 !important; border: 1px solid #555 !important;
+      color: #f5f0e8 !important; border-radius: 6px;
     }
-    input[type=text]:focus, select:focus { outline: none; border-color: var(--gold); }
-    input[readonly] { opacity: .7; cursor: text; }
+    .form-control:focus, .form-select:focus { border-color: var(--gold) !important; box-shadow: 0 0 0 .2rem rgba(232,184,75,.25) !important; }
+    .form-control::placeholder { color: #666 !important; }
+    .form-label { color: #aaa; font-size: .85rem; }
 
     /* ── Buttons ── */
-    button {
-      cursor: pointer; border: none; border-radius: 8px;
-      font-size: .93rem; font-weight: bold; padding: 10px 20px;
-      transition: transform .1s, opacity .2s;
-    }
-    button:active { transform: scale(.97); }
-    button:disabled { opacity: .4; cursor: not-allowed; }
-    .btn-gold  { background: var(--gold); color: #111; }
-    .btn-red   { background: var(--red);  color: #fff; }
-    .btn-blue  { background: var(--blue); color: #fff; }
-    .btn-green { background: #217a45;     color: #fff; }
-    .btn-dark  { background: #333; color: var(--light); border: 1px solid #555; }
+    .btn-gold  { background: var(--gold); color: #111; font-weight: bold; border: none; }
+    .btn-gold:hover  { background: #f5ca6e; color: #111; }
+    .btn-dark2 { background: #333; color: #f5f0e8; border: 1px solid #555; }
+    .btn-dark2:hover { background: #444; color: #f5f0e8; }
 
-    .row  { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-    .col  { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
-    label { font-size: .85rem; color: #aaa; }
-    .mt1  { margin-top: 12px; }
-    .mt2  { margin-top: 20px; }
-    hr    { border-color: #333; margin: 20px 0; }
+    /* ── Screens ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
 
-    /* ── Invite box ── */
-    .invite-box {
-      background: #0d2a0d; border: 2px solid #2a8a4a;
-      border-radius: 10px; padding: 16px;
-    }
-    .invite-box p { color: #aaa; font-size: .88rem; margin-bottom: 10px; }
-    .queue-box {
-      background: #0d2234; border: 2px solid #2f6f9e;
-      border-radius: 10px; padding: 16px;
-    }
-    .queue-row {
-      display: flex; align-items: center; gap: 10px;
-      color: #b9defb; font-size: .92rem;
-    }
-    .link-row { display: flex; gap: 8px; }
-    .link-row input { font-size: .78rem; background: #0a1a0a; border-color: #2a8a4a; }
+    /* ── Invite / Queue boxes ── */
+    .invite-box { background: #0d2a0d; border: 2px solid #2a8a4a; border-radius: 10px; }
+    .queue-box  { background: #0d2234; border: 2px solid #2f6f9e; border-radius: 10px; }
 
-    /* ── Games list ── */
-    .game-card {
-      background: #1c1c1c; border: 1px solid #444; border-radius: 10px;
-      padding: 14px 18px; margin: 8px 0;
-      display: flex; justify-content: space-between; align-items: center;
-      gap: 10px; flex-wrap: wrap;
-    }
-    .game-card .name { font-size: 1.05rem; color: var(--gold); }
-    .game-card .meta { font-size: .78rem; color: #888; margin-top: 3px; }
-    .game-card .btns { display: flex; gap: 8px; }
-    .badge {
-      display: inline-block; padding: 2px 10px; border-radius: 20px;
-      font-size: .73rem; font-weight: bold;
-    }
-    .badge-active   { background: #1a6b3a; color: #a0ffb8; }
-    .badge-finished { background: #555;    color: #ccc; }
+    /* ── Game card (lobby list) ── */
+    .game-card { background: #1c1c1c; border: 1px solid #444; border-radius: 10px; }
+    .game-card .game-title { color: var(--gold); font-weight: bold; }
+    .game-card .game-meta  { color: #888; font-size: .78rem; }
 
     /* ── Board ── */
-    #board-wrap {
-      width: 100%; max-width: 1200px; padding: 10px 16px 20px;
-      display: none; flex-direction: column; gap: 20px;
-    }
-    #board-wrap.active { display: flex; }
-    @media (min-width: 860px) {
-      #board-wrap { flex-direction: row; align-items: stretch; justify-content: center; }
-      #board-main { flex: 1; max-width: 800px; display: flex; flex-direction: column; gap: 12px; }
-      #board-side { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; }
-    }
-    @media (max-width: 859px) {
-      #board-main { display: flex; flex-direction: column; gap: 12px; width: 100%; }
-      #board-side { width: 100%; }
-    }
-
     .zone {
       background: var(--felt); border: 2px solid #2a8a4a;
       border-radius: 14px; padding: 12px 16px;
     }
-    .zone.mine      { border-color: var(--gold); background: #0c3d1e; }
-    .zone.waiting   { opacity: .55; }
+    .zone.mine  { border-color: var(--gold); background: #0c3d1e; }
+    .zone.waiting { opacity: .55; }
 
-    .player-label {
-      font-size: .88rem; font-weight: bold; color: var(--gold);
-      margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
-    }
+    .player-label { font-size: .88rem; font-weight: bold; color: var(--gold); }
+
     .dot {
       width: 10px; height: 10px; border-radius: 50%;
       background: #555; display: inline-block; flex-shrink: 0;
     }
-    .dot.on  { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse 1.4s infinite; }
-    .dot.me  { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .dot.on { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse 1.4s infinite; }
+    .dot.me { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
 
-    /* ── Centre ── */
+    /* ── Board centre ── */
     .board-center {
       background: #0f3d20; border: 2px solid #2a8a4a;
       border-radius: 14px; padding: 14px 18px;
-      display: flex; gap: 16px; align-items: center;
-      justify-content: space-between; flex-wrap: wrap;
     }
-    .deck-stack { position: relative; width: var(--card-w); height: var(--card-h); }
-    .score-area { display: flex; gap: 16px; }
-    .score-box  {
+    .score-box {
       background: #0a2a14; border: 1px solid #2a8a4a;
       border-radius: 8px; padding: 8px 14px; text-align: center; min-width: 68px;
     }
-    .score-box .pts { font-size: 1.6rem; font-weight: bold; color: var(--gold); }
+    .score-box .pts { font-size: 1.6rem; font-weight: bold; color: var(--gold); font-family: 'Playfair Display', serif; }
     .score-box .lbl { font-size: .72rem; color: #aaa; }
-    .trick-area { display: flex; gap: 14px; align-items: center; flex: 1; justify-content: center; }
 
     /* ── Cards ── */
     .hand { display: flex; gap: 10px; flex-wrap: wrap; min-height: calc(var(--card-h) + 4px); }
-    .card {
+    .card-tile {
       width: var(--card-w); height: var(--card-h);
       border-radius: 8px; border: 2px solid #bbb;
       background: #c8a96e; overflow: hidden;
-      user-select: none; position: relative;
-      transition: transform .15s, box-shadow .15s;
-      cursor: default; flex-shrink: 0;
+      position: relative; transition: transform .15s, box-shadow .15s;
+      cursor: default; flex-shrink: 0; user-select: none;
     }
-    .card img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 6px; }
-    .card.playable { cursor: pointer; border-color: var(--gold); }
-    .card.playable:hover { transform: translateY(-14px); box-shadow: 0 12px 28px rgba(232,184,75,.65); }
-    .card.played   { opacity: .85; transform: rotate(-2deg) scale(1.04); }
-    .card.briscola-highlight { border-color: #f39c12; box-shadow: 0 0 14px #f39c12bb; }
+    .card-tile img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 6px; }
+    .card-tile.playable { cursor: pointer; border-color: var(--gold); }
+    .card-tile.playable:hover { transform: translateY(-14px); box-shadow: 0 12px 28px rgba(232,184,75,.65); }
+    .card-tile.played   { opacity: .85; transform: rotate(-2deg) scale(1.04); }
+    .card-tile.briscola-highlight { border-color: #f39c12; box-shadow: 0 0 14px #f39c12bb; }
     .card-back {
       background: repeating-linear-gradient(45deg,#8b0000 0,#8b0000 5px,#c0392b 5px,#c0392b 10px);
       border: 3px solid #fff; cursor: default;
@@ -192,34 +120,27 @@
     .card-ph { width:var(--card-w); height:var(--card-h); border-radius:8px; border:2px dashed #555; background:transparent; flex-shrink:0; }
     .card-ph.green { border-color: #1a5a2a; background: rgba(255,255,255,.03); }
 
-    /* ── Controls ── */
+    /* ── Deck stack ── */
+    .deck-stack { position: relative; width: var(--card-w); height: var(--card-h); }
+
+    /* ── Control bar ── */
     #ctrl-bar {
-      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
       background: #111; border: 1px solid #333; border-radius: 10px;
       padding: 10px 16px;
     }
-    #status-msg { flex: 1; font-size: .97rem; color: #ddd; text-align: center; }
+    #status-msg { font-size: .97rem; color: #ddd; }
 
-    /* ── Polling indicator ── */
-    #poll-ind {
-      font-size: .75rem; color: #666; display: flex; align-items: center; gap: 5px;
-    }
-    #poll-ind .spinner { width: 10px; height: 10px; border-width: 1.5px; }
-    .spinner {
-      display: inline-block; width: 16px; height: 16px;
-      border: 2px solid #444; border-top-color: var(--gold);
-      border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle;
-    }
+    /* ── Spinner ── */
+    .spinner-sm { display: inline-block; width: 14px; height: 14px; border: 2px solid #444; border-top-color: var(--gold); border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Log ── */
     #moves-log {
       background: #111; border: 1px solid #2a3a2a; border-radius: 10px;
-      padding: 10px; height: 100%; overflow-y: auto; font-size: .78rem; color: #999;
+      padding: 10px; overflow-y: auto; font-size: .78rem; color: #999;
+      max-height: 360px;
     }
-    @media (max-width: 859px) {
-      #moves-log { max-height: 160px; height: auto; }
-    }
+    @media (max-width: 767px) { #moves-log { max-height: 160px; } }
     .log-entry { padding: 2px 0; border-bottom: 1px solid #1a2a1a; }
     .log-entry:last-child { border-bottom: none; }
     .log-entry.mine { color: var(--gold); }
@@ -227,7 +148,7 @@
     /* ── Winner modal ── */
     #winner-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.95); backdrop-filter: blur(8px); z-index: 500;
+      background: rgba(0,0,0,.95); backdrop-filter: blur(8px); z-index: 1055;
       align-items: center; justify-content: center;
     }
     #winner-overlay.show { display: flex; }
@@ -236,8 +157,7 @@
       border: 3px solid var(--gold); border-radius: 16px;
       padding: 40px; text-align: center; max-width: 420px; width: 90%;
     }
-    #winner-box h2 { font-size: 2rem; margin-bottom: 14px; }
-    #winner-box .final-scores { display: flex; gap: 20px; justify-content: center; margin: 20px 0; }
+    #winner-box h2 { font-family: 'Playfair Display', serif; color: var(--gold); }
 
     /* ── Toast ── */
     #toast {
@@ -245,235 +165,243 @@
       background: #222; border: 1px solid var(--gold);
       border-radius: 8px; padding: 12px 20px;
       max-width: 320px; font-size: .9rem;
-      opacity: 0; pointer-events: none; transition: opacity .4s; z-index: 999;
+      opacity: 0; pointer-events: none; transition: opacity .4s; z-index: 9999;
     }
     #toast.show      { opacity: 1; }
-    #toast.show.err  { border-color: var(--red); color: #ff9999; }
+    #toast.show.err  { border-color: #c0392b; color: #ff9999; }
     #toast.show.ok   { border-color: #2ecc71; color: #90ee90; }
     #toast.show.info { border-color: #aaa; color: #eee; }
 
-    @media (max-width: 580px) {
+    @media (max-width: 575px) {
       :root { --card-w: 56px; --card-h: 84px; }
-      header h1 { font-size: 1.4rem; }
-      .board-center { flex-direction: column; }
     }
+
+    /* ── Board wrap ── */
+    #board-wrap { display: none; }
+    #board-wrap.active { display: block; }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>♠ BRISCOLA ♥</h1>
-  <div class="hdr-right">
-    <small id="hdr-user">—</small>
-    <small id="hdr-game" style="color:#555;"></small>
+<!-- ══ NAVBAR ══ -->
+<nav class="navbar navbar-dark sticky-top px-3 px-md-4">
+  <span class="navbar-brand mb-0">♠ BRISCOLA ♥</span>
+  <div class="text-end">
+    <small id="hdr-user" class="d-block text-secondary" style="font-size:.78rem;">—</small>
+    <small id="hdr-game" class="d-block" style="color:#555;font-size:.78rem;"></small>
   </div>
-</header>
+</nav>
 
-<!-- ══════════════════════════════════════════════
-     SCREEN: AUTH
-══════════════════════════════════════════════ -->
-<div id="screen-auth" class="screen active" style="max-width:480px;">
-  <div class="panel">
-    <h2>👤 Identificazione</h2>
-    <p style="color:#aaa;font-size:.88rem;margin-bottom:16px;">
-      Inserisci il nome giocatore.
-    </p>
-    <div class="col">
-      <label>Nome giocatore</label>
-      <input type="text" id="inp-display-name" placeholder="es. mario_rossi" />
-    </div>
-    <div class="row mt1">
-      <button class="btn-blue" onclick="doLoginWithInvite()">Continua</button>
+<!-- ══════════════ SCREEN: AUTH ══════════════ -->
+<div id="screen-auth" class="screen active">
+  <div class="container py-4" style="max-width:480px;">
+    <div class="panel">
+      <h2 class="fs-5 mb-1"><i class="bi bi-person-circle me-2"></i>Identificazione</h2>
+      <p class="text-secondary mb-3" style="font-size:.88rem;">Inserisci il nome giocatore.</p>
+      <div class="mb-3">
+        <label class="form-label">Nome giocatore</label>
+        <input type="text" id="inp-display-name" class="form-control" placeholder="es. mario_rossi"/>
+      </div>
+      <button class="btn btn-primary" onclick="doLoginWithInvite()">Continua</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SCREEN: LOBBY
-══════════════════════════════════════════════ -->
+<!-- ══════════════ SCREEN: LOBBY ══════════════ -->
 <div id="screen-lobby" class="screen">
-  <!-- Crea nuova partita -->
-  <div class="panel">
-    <div class="row">
-      <button class="btn-gold" id="btn-private" onclick="createPrivateGame()">Partita privata</button>
-      <button class="btn-blue" id="btn-queue" onclick="queueRandomMatch()">Coda casuale</button>
-    </div>
+  <div class="container py-3" style="max-width:860px;">
 
-    <div id="queue-box" class="queue-box mt1" style="display:none;">
-      <div class="queue-row">
-        <span class="spinner"></span>
-        <span id="queue-msg">Ricerca avversario casuale…</span>
+    <!-- Crea / coda -->
+    <div class="panel mb-3">
+      <h2 class="fs-5 mb-3"><i class="bi bi-joystick me-2"></i>Nuova Partita</h2>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-gold" id="btn-private" onclick="createPrivateGame()">
+          <i class="bi bi-lock-fill me-1"></i>Partita privata
+        </button>
+        <button class="btn btn-primary" id="btn-queue" onclick="queueRandomMatch()">
+          <i class="bi bi-shuffle me-1"></i>Coda casuale
+        </button>
       </div>
-      <div class="row mt1">
-        <button class="btn-dark" onclick="cancelQueue()">Esci dalla coda</button>
+
+      <!-- Queue box -->
+      <div id="queue-box" class="queue-box p-3 mt-3" style="display:none;">
+        <div class="d-flex align-items-center gap-2 mb-2" style="color:#b9defb;">
+          <span class="spinner-sm"></span>
+          <span id="queue-msg">Ricerca avversario casuale…</span>
+        </div>
+        <button class="btn btn-dark2 btn-sm" onclick="cancelQueue()">
+          <i class="bi bi-x-circle me-1"></i>Esci dalla coda
+        </button>
+      </div>
+
+      <!-- Invite box -->
+      <div id="invite-box" class="invite-box p-3 mt-3" style="display:none;">
+        <h3 class="fs-6" style="color:#2ecc71;"><i class="bi bi-check-circle-fill me-2"></i>Partita creata!</h3>
+        <p class="text-secondary mb-2" style="font-size:.88rem;">Manda questo link al tuo avversario.</p>
+        <div class="d-flex gap-2 mb-2">
+          <input type="text" id="invite-link" class="form-control form-control-sm" readonly style="font-size:.78rem;background:#0a1a0a!important;border-color:#2a8a4a!important;"/>
+          <button class="btn btn-success btn-sm" onclick="copyInvite()"><i class="bi bi-clipboard"></i> Copia</button>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="enterAsP1()">
+          <i class="bi bi-play-fill me-1"></i>Gioca ora come Giocatore 1
+        </button>
       </div>
     </div>
 
-    <!-- Invite box – appare dopo creazione -->
-    <div id="invite-box" class="invite-box mt2" style="display:none;">
-      <h3 style="color:#2ecc71;margin-bottom:8px;">✅ Partita creata!</h3>
-      <p>Manda questo link al tuo avversario. Quando entra la partita inizia automaticamente.</p>
-      <div class="link-row">
-        <input type="text" id="invite-link" readonly />
-        <button class="btn-green" onclick="copyInvite()">📋 Copia</button>
-      </div>
-      <div class="row mt1">
-        <button class="btn-gold" onclick="enterAsP1()">▶ Gioca ora come Giocatore 1</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Join con link / game ID -->
-  <div class="panel">
-    <h2>🔗 Unisciti a una partita</h2>
-    <p style="color:#aaa;font-size:.88rem;margin-bottom:12px;">
-      Se hai ricevuto un link di invito, aprilo direttamente nel browser.
-      Altrimenti incolla qui il Game ID.
-    </p>
-    <div class="row">
-      <div class="col">
-        <label>Game ID</label>
-        <input type="text" id="inp-join-id" placeholder="xxxxxxxx-xxxx-…" />
-      </div>
-      <button class="btn-blue" onclick="joinByGameId()">Unisciti</button>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <h2 style="margin:0;">⚙️ Impostazioni</h2>
-      <button class="btn-dark" onclick="openSettings()">Apri</button>
-    </div>
-    <p style="color:#aaa;font-size:.88rem;margin-top:10px;">
-      Scegli il tipo di mazzo mostrato durante la partita.
-    </p>
-  </div>
-
-  <!-- Lista partite -->
-  <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <h2 style="margin:0;">📋 Le tue partite</h2>
-      <button class="btn-dark" onclick="loadGames()">↻ Aggiorna</button>
-    </div>
-    <div id="games-list" class="mt1"><span class="spinner"></span></div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SCREEN: SETTINGS
-══════════════════════════════════════════════ -->
-<div id="screen-settings" class="screen" style="max-width:560px;">
-  <div class="panel">
-    <h2>⚙️ Impostazioni</h2>
-    <p style="color:#aaa;font-size:.88rem;margin-bottom:12px;">
-      Seleziona quale tipo di carte vuoi vedere sul tavolo.
-    </p>
-    <div class="col">
-      <label>Tipo carte</label>
-      <select id="sel-card-theme">
-        <option value="napoletane">Carte Napoletane</option>
-        <option value="bergamasche">Carte Bergamasche</option>
-      </select>
-    </div>
-    <div class="row mt1">
-      <button class="btn-blue" onclick="saveSettings()">Salva</button>
-      <button class="btn-dark" onclick="goLobby()">Annulla</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SCREEN: GIOCO
-══════════════════════════════════════════════ -->
-<div id="screen-game" class="screen">
-  <div id="ctrl-bar">
-    <button class="btn-dark" onclick="goLobby()">← Lobby</button>
-    <span id="status-msg">—</span>
-    <span id="poll-ind" style="display:none;">
-      <span class="spinner"></span> <span id="poll-txt">attesa avversario…</span>
-    </span>
-    <button class="btn-red"  onclick="abandonGame()">Abbandona</button>
-  </div>
-</div>
-
-<!-- Board (fuori .screen per dimensioni full-width) -->
-<div id="board-wrap">
-  <div id="board-main">
-    <!-- Avversario -->
-    <div class="zone" id="zone-opp">
-      <div class="player-label">
-        <span class="dot" id="dot-opp"></span>
-        <span id="lbl-opp">Avversario</span>
-        <span style="margin-left:auto;font-size:.8rem;color:#888;" id="cnt-opp">3</span>
-      </div>
-      <div class="hand" id="hand-opp"></div>
-    </div>
-
-    <!-- Centro -->
-    <div class="board-center">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-        <div class="deck-stack" id="deck-viz"></div>
-        <small id="deck-cnt" style="color:#aaa;"></small>
-        <small style="color:#666;font-size:.72rem;">MAZZO</small>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-        <small style="color:#666;font-size:.72rem;">TAVOLO</small>
-        <div class="trick-area" id="trick-area"></div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <small style="color:#666;font-size:.72rem;">PUNTEGGI</small>
-        <div class="score-area">
-          <div class="score-box">
-            <div class="pts" id="sc-me">0</div>
-            <div class="lbl" id="sc-lbl-me">Tu</div>
-          </div>
-          <div class="score-box">
-            <div class="pts" id="sc-opp">0</div>
-            <div class="lbl" id="sc-lbl-opp">Avversario</div>
-          </div>
+    <!-- Join by ID -->
+    <div class="panel mb-3">
+      <h2 class="fs-5 mb-1"><i class="bi bi-link-45deg me-2"></i>Unisciti a una partita</h2>
+      <p class="text-secondary mb-3" style="font-size:.88rem;">Incolla il Game ID per unirti direttamente.</p>
+      <div class="row g-2 align-items-end">
+        <div class="col">
+          <label class="form-label">Game ID</label>
+          <input type="text" id="inp-join-id" class="form-control" placeholder="xxxxxxxx-xxxx-…"/>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary" onclick="joinByGameId()">Unisciti</button>
         </div>
       </div>
     </div>
 
-    <!-- Mia mano -->
-    <div class="zone mine" id="zone-me">
-      <div class="player-label">
-        <span class="dot me" id="dot-me"></span>
-        <span id="lbl-me">Tu</span>
-        <span style="margin-left:auto;font-size:.8rem;color:#888;" id="cnt-me">3</span>
+    <!-- Settings shortcut -->
+    <div class="panel mb-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2 class="fs-5 mb-0"><i class="bi bi-gear-fill me-2"></i>Impostazioni</h2>
+        <button class="btn btn-dark2 btn-sm" onclick="openSettings()">Apri</button>
       </div>
-      <div class="hand" id="hand-me"></div>
+      <p class="text-secondary mt-2 mb-0" style="font-size:.88rem;">Scegli il tipo di mazzo mostrato durante la partita.</p>
     </div>
-  </div>
 
-  <!-- Log mosse -->
-  <div id="board-side">
-    <h3 style="font-size:.85rem;margin-bottom:5px;">📜 Mosse</h3>
-    <div id="moves-log"></div>
+    <!-- Lista partite -->
+    <div class="panel">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="fs-5 mb-0"><i class="bi bi-card-list me-2"></i>Le tue partite</h2>
+        <button class="btn btn-dark2 btn-sm" onclick="loadGames()"><i class="bi bi-arrow-clockwise"></i> Aggiorna</button>
+      </div>
+      <div id="games-list"><span class="spinner-sm"></span></div>
+    </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════ WINNER MODAL -->
+<!-- ══════════════ SCREEN: SETTINGS ══════════════ -->
+<div id="screen-settings" class="screen">
+  <div class="container py-4" style="max-width:560px;">
+    <div class="panel">
+      <h2 class="fs-5 mb-1"><i class="bi bi-gear-fill me-2"></i>Impostazioni</h2>
+      <p class="text-secondary mb-3" style="font-size:.88rem;">Seleziona quale tipo di carte vuoi vedere sul tavolo.</p>
+      <div class="mb-3">
+        <label class="form-label">Tipo carte</label>
+        <select id="sel-card-theme" class="form-select">
+          <option value="napoletane">Carte Napoletane</option>
+          <option value="bergamasche">Carte Bergamasche</option>
+        </select>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" onclick="saveSettings()">Salva</button>
+        <button class="btn btn-dark2" onclick="goLobby()">Annulla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: GIOCO ══════════════ -->
+<div id="screen-game" class="screen">
+  <div class="container-fluid py-2" style="max-width:1200px;">
+    <div id="ctrl-bar" class="d-flex align-items-center gap-2 flex-wrap mb-3">
+      <button class="btn btn-dark2 btn-sm" onclick="goLobby()"><i class="bi bi-arrow-left"></i> Lobby</button>
+      <span id="status-msg" class="flex-grow-1 text-center">—</span>
+      <span id="poll-ind" class="d-none d-flex align-items-center gap-1" style="font-size:.75rem;color:#666;">
+        <span class="spinner-sm"></span>
+        <span id="poll-txt">attesa avversario…</span>
+      </span>
+      <button class="btn btn-danger btn-sm" onclick="abandonGame()"><i class="bi bi-door-open me-1"></i>Abbandona</button>
+    </div>
+  </div>
+</div>
+
+<!-- Board – full width, outside .screen -->
+<div id="board-wrap">
+  <div class="container-fluid pb-4" style="max-width:1200px;">
+    <div class="row g-3">
+      <!-- Main board -->
+      <div class="col-12 col-md-8 col-lg-9 d-flex flex-column gap-3">
+
+        <!-- Avversario -->
+        <div class="zone" id="zone-opp">
+          <div class="d-flex align-items-center gap-2 mb-2 player-label">
+            <span class="dot" id="dot-opp"></span>
+            <span id="lbl-opp">Avversario</span>
+            <span class="ms-auto text-secondary" style="font-size:.8rem;" id="cnt-opp">3 carte</span>
+          </div>
+          <div class="hand" id="hand-opp"></div>
+        </div>
+
+        <!-- Centro -->
+        <div class="board-center d-flex flex-wrap gap-3 align-items-center justify-content-between">
+          <!-- Mazzo -->
+          <div class="d-flex flex-column align-items-center gap-1">
+            <div class="deck-stack" id="deck-viz"></div>
+            <small id="deck-cnt" class="text-secondary"></small>
+            <small class="text-uppercase" style="color:#666;font-size:.7rem;">Mazzo</small>
+          </div>
+          <!-- Tavolo -->
+          <div class="d-flex flex-column align-items-center gap-1">
+            <small class="text-uppercase" style="color:#666;font-size:.7rem;">Tavolo</small>
+            <div class="d-flex gap-3 align-items-center" id="trick-area"></div>
+          </div>
+          <!-- Punteggi -->
+          <div class="d-flex flex-column align-items-center gap-2">
+            <small class="text-uppercase" style="color:#666;font-size:.7rem;">Punteggi</small>
+            <div class="d-flex gap-3">
+              <div class="score-box">
+                <div class="pts" id="sc-me">0</div>
+                <div class="lbl" id="sc-lbl-me">Tu</div>
+              </div>
+              <div class="score-box">
+                <div class="pts" id="sc-opp">0</div>
+                <div class="lbl" id="sc-lbl-opp">Avversario</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mia mano -->
+        <div class="zone mine" id="zone-me">
+          <div class="d-flex align-items-center gap-2 mb-2 player-label">
+            <span class="dot me" id="dot-me"></span>
+            <span id="lbl-me">Tu</span>
+            <span class="ms-auto text-secondary" style="font-size:.8rem;" id="cnt-me">3 carte</span>
+          </div>
+          <div class="hand" id="hand-me"></div>
+        </div>
+      </div>
+
+      <!-- Log mosse -->
+      <div class="col-12 col-md-4 col-lg-3">
+        <h3 class="fs-6 mb-2" style="color:var(--gold);"><i class="bi bi-journal-text me-1"></i>Mosse</h3>
+        <div id="moves-log" style="height:100%;min-height:200px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WINNER MODAL ══ -->
 <div id="winner-overlay">
   <div id="winner-box">
     <div style="font-size:3rem;" id="w-emoji">🏆</div>
-    <h2 id="w-title">Fine partita!</h2>
-    <p id="w-msg" style="color:#ccc;"></p>
-    <div class="final-scores">
+    <h2 class="mb-2" id="w-title">Fine partita!</h2>
+    <p id="w-msg" class="text-secondary"></p>
+    <div class="d-flex gap-3 justify-content-center my-3">
       <div class="score-box"><div class="pts" id="w-sc-me">0</div><div class="lbl" id="w-lbl-me">Tu</div></div>
       <div class="score-box"><div class="pts" id="w-sc-opp">0</div><div class="lbl" id="w-lbl-opp">Avversario</div></div>
     </div>
-    <div class="row" style="justify-content:center;gap:12px;">
-      <button class="btn-gold" onclick="goLobby()">Torna alla lobby</button>
-    </div>
+    <button class="btn btn-gold" onclick="goLobby()"><i class="bi bi-house-fill me-1"></i>Torna alla lobby</button>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<!-- ══════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 'use strict';
 
@@ -509,7 +437,6 @@ function shuffle(a) {
 function cardPts(c) { return POINTS[c.rank]||0; }
 function lbl(c)     { return `${RANK_LABEL[c.rank]}${SUIT_ICON[c.suit]}`; }
 
-// Returns index of trick winner (0 = first player, 1 = second)
 function trickWinner(c1,c2,leadSuit,bSuit){
   function score(c){ return c.suit===bSuit?100+POWER[c.rank]:c.suit===leadSuit?POWER[c.rank]:-1; }
   return score(c2)>score(c1)?1:0;
@@ -522,13 +449,13 @@ function initState(p1id, p2id){
     deck,
     hands:    {[p1id]:deck.splice(0,3),[p2id]:deck.splice(0,3)},
     briscola: deck[deck.length-1],
-    trick:    [],   // [{pid,card}]
+    trick:    [],
     scores:   {[p1id]:0,[p2id]:0},
     captured: {[p1id]:[],[p2id]:[]},
     current:  p1id,
     lead:     null,
     phase:    'playing',
-    winner:   null,  // pid | 'draw' | null
+    winner:   null,
     round:    0
   };
 }
@@ -538,16 +465,15 @@ const INTERNAL_API_KEY = 'f9d64788-71e9-4b54-9d88-42c4005feaa91eab062d0cf54ddbaf
 let apiKey   = INTERNAL_API_KEY;
 let myName   = localStorage.getItem('bris_name') || 'Giocatore';
 let gameId   = null;
-let myPid    = null;  // player ID in THIS game
+let myPid    = null;
 let oppPid   = null;
-let myRole   = null;  // 'p1' | 'p2'
-let gs       = null;  // game state
+let myRole   = null;
+let gs       = null;
 let pollTimer= null;
 let posting  = false;
 let cardTheme = persistCardTheme(localStorage.getItem(CARD_THEME_STORAGE_KEY) || DEFAULT_CARD_THEME);
 
-// Pending invite (set after createGame, before enterAsP1)
-let pendingInvite = null; // {gameId, p1id, p2id}
+let pendingInvite = null;
 let queueTimer = null;
 let queueGameId = null;
 let queueChecking = false;
@@ -585,7 +511,6 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 function getCardDir(theme = cardTheme){
   return (CARD_THEMES[theme] || CARD_THEMES[DEFAULT_CARD_THEME]).dir;
 }
-
 function getFallbackCardDir(theme = cardTheme){
   const alt = theme === 'napoletane' ? 'bergamasche' : 'napoletane';
   return getCardDir(alt);
@@ -600,10 +525,7 @@ function openSettings(){
 function saveSettings(){
   const sel = document.getElementById('sel-card-theme');
   const nextTheme = sel?.value || DEFAULT_CARD_THEME;
-  if(!CARD_THEMES[nextTheme]){
-    toast('Tipo di carte non valido','err');
-    return;
-  }
+  if(!CARD_THEMES[nextTheme]){ toast('Tipo di carte non valido','err'); return; }
   cardTheme = persistCardTheme(nextTheme);
   if(gs) renderBoard();
   toast(`Mazzo impostato: ${CARD_THEMES[cardTheme].label}`,'ok');
@@ -615,23 +537,13 @@ function saveDisplayName(){
   const nameInput = document.getElementById('inp-display-name');
   if(!nameInput) return;
   const name = nameInput.value.trim();
-  if(name){
-    myName = name;
-    localStorage.setItem('bris_name', myName);
-  }
+  if(name){ myName = name; localStorage.setItem('bris_name', myName); }
 }
 
-function useInternalAuth(){
-  apiKey = INTERNAL_API_KEY;
-}
+function useInternalAuth(){ apiKey = INTERNAL_API_KEY; }
 
 function makeInviteToken(data){
-  const payload = JSON.stringify({
-    join: data.join || '',
-    p1id: data.p1id || '',
-    p2id: data.p2id || '',
-    as: data.as || 'p2'
-  });
+  const payload = JSON.stringify({ join: data.join||'', p1id: data.p1id||'', p2id: data.p2id||'', as: data.as||'p2' });
   return btoa(payload).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 
@@ -639,42 +551,22 @@ function readInviteToken(token){
   try{
     const normalized = (token||'').replace(/-/g,'+').replace(/_/g,'/');
     const padLen = (4 - (normalized.length % 4)) % 4;
-    const padded = normalized + '='.repeat(padLen);
-    const parsed = JSON.parse(atob(padded));
+    const parsed = JSON.parse(atob(normalized + '='.repeat(padLen)));
     if(!parsed?.join) return null;
-    return {
-      join: parsed.join,
-      p1id: parsed.p1id || '',
-      p2id: parsed.p2id || '',
-      as: parsed.as || 'p2'
-    };
-  }catch(_){
-    return null;
-  }
+    return { join: parsed.join, p1id: parsed.p1id||'', p2id: parsed.p2id||'', as: parsed.as||'p2' };
+  }catch(_){ return null; }
 }
 
 function parseInvite(){
   const params = new URLSearchParams(location.search);
-
   const inviteToken = params.get('invite') || '';
-  if(inviteToken){
-    const decoded = readInviteToken(inviteToken);
-    if(decoded) return decoded;
-  }
-
+  if(inviteToken){ const decoded = readInviteToken(inviteToken); if(decoded) return decoded; }
   const join = params.get('join') || '';
-  const p1id = params.get('p1id') || '';
-  const p2id = params.get('p2id') || '';
-  const as   = params.get('as') || 'p2';
-
   if(!join) return null;
-  return { join, p1id, p2id, as };
+  return { join, p1id: params.get('p1id')||'', p2id: params.get('p2id')||'', as: params.get('as')||'p2' };
 }
 
-function syncApiKeyFromInvite(){
-  useInternalAuth();
-  return apiKey;
-}
+function syncApiKeyFromInvite(){ useInternalAuth(); return apiKey; }
 
 function doLoginWithInvite(){
   saveDisplayName();
@@ -685,12 +577,8 @@ function doLoginWithInvite(){
 function afterLogin(){
   document.getElementById('hdr-user').textContent = `👤 ${myName}`;
   const inv = parseInvite();
-  if(inv && (inv.as||'p2')==='p2'){
-    autoJoinAsP2(inv);
-  } else {
-    showScreen('lobby');
-    loadGames();
-  }
+  if(inv && (inv.as||'p2')==='p2'){ autoJoinAsP2(inv); }
+  else { showScreen('lobby'); loadGames(); }
 }
 
 window.addEventListener('load', ()=>{
@@ -701,10 +589,7 @@ window.addEventListener('load', ()=>{
   if(displayInput) displayInput.value = myName;
   const settingsSelect = document.getElementById('sel-card-theme');
   if(settingsSelect) settingsSelect.value = cardTheme;
-  if(inv && (inv.as||'p2')==='p2'){
-    afterLogin();
-    return;
-  }
+  if(inv && (inv.as||'p2')==='p2'){ afterLogin(); return; }
 });
 
 /* ── MATCHMAKING ────────────────────────────────── */
@@ -713,7 +598,6 @@ function setQueueUI(active, message){
   const msg = document.getElementById('queue-msg');
   if(box) box.style.display = active ? 'block' : 'none';
   if(msg && message) msg.textContent = message;
-
   const btnQueue = document.getElementById('btn-queue');
   const btnPrivate = document.getElementById('btn-private');
   if(btnQueue) btnQueue.disabled = active;
@@ -721,9 +605,7 @@ function setQueueUI(active, message){
 }
 
 function stopQueueMatch(resetGame = true){
-  clearInterval(queueTimer);
-  queueTimer = null;
-  queueChecking = false;
+  clearInterval(queueTimer); queueTimer = null; queueChecking = false;
   if(resetGame) queueGameId = null;
   setQueueUI(false);
 }
@@ -731,143 +613,85 @@ function stopQueueMatch(resetGame = true){
 async function checkQueueMatch(){
   if(!queueGameId || queueChecking) return;
   queueChecking = true;
-
   try{
-    const gid = queueGameId;
-    const gd = await api('GET',`/games/${gid}`);
+    const gd = await api('GET',`/games/${queueGameId}`);
     const g = gd.game;
     if(!g){ throw new Error('Partita in coda non trovata'); }
-
-    // A joined queue match is signaled by an extra move beyond the init move.
-    // Player placeholder name can remain "In attesa…", so names are not reliable here.
     const hasJoinSignal = (g.moves?.length||0) > 1;
-    if(!hasJoinSignal){
-      setQueueUI(true,'Ricerca avversario casuale…');
-      return;
-    }
-
-    const s = await resolveSessionFromPlayers(gid);
-    await markJoinedIfNeeded(gid, s.meId);
+    if(!hasJoinSignal){ setQueueUI(true,'Ricerca avversario casuale…'); return; }
+    const s = await resolveSessionFromPlayers(queueGameId);
+    await markJoinedIfNeeded(queueGameId, s.meId);
     stopQueueMatch();
     toast('Avversario trovato!','ok');
-    startGameSession(gid, s.meId, s.oppId, s.role);
+    startGameSession(queueGameId, s.meId, s.oppId, s.role);
   }catch(e){
     stopQueueMatch();
     toast(e.message || 'Errore durante la coda casuale','err');
-  }finally{
-    if(queueTimer) queueChecking = false;
-  }
+  }finally{ if(queueTimer) queueChecking = false; }
 }
 
-function startQueueWatcher(){
-  clearInterval(queueTimer);
-  queueTimer = setInterval(checkQueueMatch, 2500);
-}
+function startQueueWatcher(){ clearInterval(queueTimer); queueTimer = setInterval(checkQueueMatch, 2500); }
 
 async function cancelQueue(){
   const gid = queueGameId;
   stopQueueMatch();
-
   if(gid){
     try{
       const gd = await api('GET',`/games/${gid}`);
       const stillWaiting = (gd.game?.players||[]).some(p => isWaitingPlayer(p.name));
-      if(stillWaiting){
-        await api('PUT',`/games/${gid}`,{status:'finished'});
-      }
+      if(stillWaiting) await api('PUT',`/games/${gid}`,{status:'finished'});
     }catch(_){ }
   }
-
   toast('Sei uscito dalla coda.','info');
 }
 
 async function queueRandomMatch(){
   const name = (myName||'Giocatore').trim() || 'Giocatore';
-  if(queueTimer){
-    toast('Sei gia in coda.','info');
-    return;
-  }
-
+  if(queueTimer){ toast('Sei gia in coda.','info'); return; }
   document.getElementById('invite-box').style.display = 'none';
   setQueueUI(true,'Ricerca avversario casuale…');
-
   try{
     const all = await api('GET','/games');
-    const waiting = (all.games||[])
-      .filter(isQueueJoinable)
-      .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
-
+    const waiting = (all.games||[]).filter(isQueueJoinable).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
     const mine = waiting.find(g => normPlayerName(g.players?.[0]?.name || '')===normPlayerName(name));
-    if(mine){
-      queueGameId = mine.id;
-      startQueueWatcher();
-      await checkQueueMatch();
-      return;
-    }
-
+    if(mine){ queueGameId = mine.id; startQueueWatcher(); await checkQueueMatch(); return; }
     const candidate = waiting.find(g => normPlayerName(g.players?.[0]?.name || '')!==normPlayerName(name));
     if(candidate){
-      try{
-        const host = candidate.players?.[0]?.name || '???';
-        await api('PUT',`/games/${candidate.id}`,{name:`[Briscola][Queue] ${host} vs ${name}`});
-      }catch(_){ }
-
+      try{ const host = candidate.players?.[0]?.name || '???'; await api('PUT',`/games/${candidate.id}`,{name:`[Briscola][Queue] ${host} vs ${name}`}); }catch(_){}
       const s = await resolveSessionFromPlayers(candidate.id);
       await markJoinedIfNeeded(candidate.id, s.meId);
-      stopQueueMatch();
-      toast('Avversario trovato!','ok');
-      startGameSession(candidate.id, s.meId, s.oppId, s.role);
-      return;
+      stopQueueMatch(); toast('Avversario trovato!','ok');
+      startGameSession(candidate.id, s.meId, s.oppId, s.role); return;
     }
-
     const gd = await api('POST','/games',{name:`[Briscola][Queue] ${name} vs ???`});
     const gid = gd.game.id;
     const r1 = await api('POST',`/games/${gid}/players`,{name});
     const r2 = await api('POST',`/games/${gid}/players`,{name:'In attesa…'});
     const st = initState(r1.player.id, r2.player.id);
-
-    await api('POST',`/games/${gid}/moves`,{
-      playerId: r1.player.id,
-      data: { type:'init', description:'Partita casuale in coda', state: st }
-    });
-
+    await api('POST',`/games/${gid}/moves`,{ playerId: r1.player.id, data: { type:'init', description:'Partita casuale in coda', state: st } });
     queueGameId = gid;
     setQueueUI(true,'In coda... in attesa di un avversario');
     startQueueWatcher();
-  }catch(e){
-    stopQueueMatch();
-    toast(e.message,'err');
-    console.error(e);
-  }
+  }catch(e){ stopQueueMatch(); toast(e.message,'err'); console.error(e); }
 }
 
 async function createPrivateGame(){
   const name = (myName||'Giocatore').trim() || 'Giocatore';
   stopQueueMatch();
-
   try{
     const gd = await api('POST','/games',{name:`[Briscola][Private] ${name} vs ???`});
     const gid = gd.game.id;
     const r1 = await api('POST',`/games/${gid}/players`,{name});
     const r2 = await api('POST',`/games/${gid}/players`,{name:'In attesa…'});
-
     const st = initState(r1.player.id, r2.player.id);
-    await api('POST',`/games/${gid}/moves`,{
-      playerId: r1.player.id,
-      data: { type:'init', description:'Partita privata creata', state: st }
-    });
-
+    await api('POST',`/games/${gid}/moves`,{ playerId: r1.player.id, data: { type:'init', description:'Partita privata creata', state: st } });
     pendingInvite = {gameId:gid, p1id:r1.player.id, p2id:r2.player.id};
     const base = `${location.origin}${location.pathname}`;
     const token = makeInviteToken({ join: gid, p1id: r1.player.id, p2id: r2.player.id, as: 'p2' });
-    const link = `${base}?invite=${token}`;
-    document.getElementById('invite-link').value = link;
+    document.getElementById('invite-link').value = `${base}?invite=${token}`;
     document.getElementById('invite-box').style.display = 'block';
     toast('Partita privata creata: condividi il link invito.','ok');
-  }catch(e){
-    toast(e.message,'err');
-    console.error(e);
-  }
+  }catch(e){ toast(e.message,'err'); console.error(e); }
 }
 
 function copyInvite(){
@@ -882,14 +706,8 @@ function enterAsP1(){
   startGameSession(gid, p1id, p2id, 'p1');
 }
 
-function normPlayerName(name){
-  return (name||'').trim().toLowerCase();
-}
-
-function isWaitingPlayer(name){
-  return normPlayerName(name).startsWith('in attesa');
-}
-
+function normPlayerName(name){ return (name||'').trim().toLowerCase(); }
+function isWaitingPlayer(name){ return normPlayerName(name).startsWith('in attesa'); }
 function isQueueJoinable(g){
   if(!g || g.status==='finished') return false;
   if(!(g.name||'').startsWith('[Briscola][Queue]')) return false;
@@ -906,40 +724,19 @@ async function markJoinedIfNeeded(gid, meId){
     if(moves.length !== 1) return;
     const state = moves[0]?.data?.state;
     if(!state) return;
-    await api('POST',`/games/${gid}/moves`,{
-      playerId: meId,
-      data: { type:'join', description:`${myName} si unisce alla partita`, state }
-    });
-  }catch(_){ /* best effort */ }
+    await api('POST',`/games/${gid}/moves`,{ playerId: meId, data: { type:'join', description:`${myName} si unisce alla partita`, state } });
+  }catch(_){ }
 }
 
 async function identifyPlayerForGame(gid){
   const chosenName = (myName||'').trim();
-  if(!chosenName){
-    throw new Error('Inserisci prima il nome giocatore');
-  }
-
+  if(!chosenName) throw new Error('Inserisci prima il nome giocatore');
   const pd = await api('GET',`/games/${gid}/players`);
   const players = [...(pd.players||[])];
-
   let me = players.find(p => normPlayerName(p.name)===normPlayerName(chosenName));
-  if(!me){
-    me = players.find(p => isWaitingPlayer(p.name));
-  }
-
-  if(!me && players.length<2){
-    const created = await api('POST',`/games/${gid}/players`,{name:chosenName});
-    me = created.player;
-    players.push(me);
-  }
-
-  if(!me){
-    const names = players.map(p=>p.name).join(', ');
-    throw new Error(names
-      ? `Impossibile identificarti. Player disponibili: ${names}`
-      : 'Impossibile identificarti in questa partita');
-  }
-
+  if(!me) me = players.find(p => isWaitingPlayer(p.name));
+  if(!me && players.length<2){ const created = await api('POST',`/games/${gid}/players`,{name:chosenName}); me = created.player; players.push(me); }
+  if(!me){ const names = players.map(p=>p.name).join(', '); throw new Error(names ? `Impossibile identificarti. Player disponibili: ${names}` : 'Impossibile identificarti in questa partita'); }
   const opp = players.find(p=>p.id!==me.id)||null;
   return { me, opp };
 }
@@ -950,108 +747,80 @@ async function resolveSessionFromPlayers(gid){
   const gamePlayers = gd.game.players||[];
   const me = gamePlayers.find(p=>p.id===idInfo.me.id) || idInfo.me;
   const opp = gamePlayers.find(p=>p.id!==me.id) || idInfo.opp;
-
-  if(!opp){
-    throw new Error('Serve un secondo player per iniziare la partita');
-  }
-
+  if(!opp) throw new Error('Serve un secondo player per iniziare la partita');
   const myIndex = gamePlayers.findIndex(p=>p.id===me.id);
-  const role = myIndex===0 ? 'p1' : 'p2';
-  return { meId: me.id, oppId: opp.id, role };
+  return { meId: me.id, oppId: opp.id, role: myIndex===0?'p1':'p2' };
 }
 
-/* ── JOIN AS P2 from URL ─────────────────────────── */
+/* ── JOIN AS P2 ─────────────────────────────────── */
 async function autoJoinAsP2(inv){
-  const gid   = inv?.join;
-
+  const gid = inv?.join;
   if(!gid){ toast('Link di invito non valido','err'); showScreen('lobby'); return; }
   useInternalAuth();
-
-  // Update p2 player name
-  try{
-    // Patch game name with p2's name
-    await api('PUT',`/games/${gid}`,{name:`[Briscola] ??? vs ${myName}`});
-  }catch(_){}
-
+  try{ await api('PUT',`/games/${gid}`,{name:`[Briscola] ??? vs ${myName}`}); }catch(_){}
   try{
     const s = await resolveSessionFromPlayers(gid);
     await markJoinedIfNeeded(gid, s.meId);
     toast(`Unito alla partita come ${myName}!`,'ok');
     startGameSession(gid, s.meId, s.oppId, s.role);
-  }catch(e){
-    toast(e.message,'err');
-    showScreen('lobby');
-    return;
-  }
-  // Clean URL
+  }catch(e){ toast(e.message,'err'); showScreen('lobby'); return; }
   history.replaceState({},'',location.pathname);
 }
 
-/* ── JOIN BY GAME ID (manual) ────────────────────── */
 async function joinByGameId(){
   const gid = document.getElementById('inp-join-id').value.trim();
   if(!gid){ toast('Inserisci un Game ID','err'); return; }
-  try{
-    const s = await resolveSessionFromPlayers(gid);
-    startGameSession(gid, s.meId, s.oppId, s.role);
-  }catch(e){ toast(e.message,'err'); }
+  try{ const s = await resolveSessionFromPlayers(gid); startGameSession(gid, s.meId, s.oppId, s.role); }
+  catch(e){ toast(e.message,'err'); }
 }
 
-/* ── LOAD GAMES (lobby list) ──────────────────────── */
+/* ── LOAD GAMES ─────────────────────────────────── */
 async function loadGames(){
   const el = document.getElementById('games-list');
-  el.innerHTML='<span class="spinner"></span>';
+  el.innerHTML='<span class="spinner-sm"></span>';
   try{
     const d = await api('GET','/games');
     const gamesToShow = d.games.filter(g => g.status !== 'finished');
-    if(!gamesToShow.length){ el.innerHTML='<em style="color:#666">Nessuna partita attiva.</em>'; return; }
+    if(!gamesToShow.length){ el.innerHTML='<em class="text-secondary">Nessuna partita attiva.</em>'; return; }
     gamesToShow.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     el.innerHTML='';
     for(const g of gamesToShow){
-      const div=document.createElement('div'); div.className='game-card';
+      const div=document.createElement('div');
+      div.className='game-card d-flex justify-content-between align-items-center gap-2 flex-wrap p-3 mb-2';
+      const statusBadge = g.status==='active'
+        ? `<span class="badge text-bg-success">In corso</span>`
+        : `<span class="badge text-bg-secondary">Finita</span>`;
+      const resumeBtn = g.name.startsWith('[Briscola]')&&g.players.length>=2
+        ? `<button class="btn btn-success btn-sm" onclick="resumeGame('${g.id}')"><i class="bi bi-play-fill"></i> Riprendi</button>` : '';
       div.innerHTML=`
         <div>
-          <div class="name">${esc(g.name)}</div>
-          <div class="meta">ID: ${g.id.slice(0,10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${g.players.length} | 🃏 ${g.moves.length} mosse</div>
+          <div class="game-title">${esc(g.name)}</div>
+          <div class="game-meta">ID: ${g.id.slice(0,10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${g.players.length} | 🃏 ${g.moves.length} mosse</div>
         </div>
-        <div class="btns">
-          <span class="badge badge-${g.status==='active'?'active':'finished'}">${g.status==='active'?'In corso':'Finita'}</span>
-          ${g.name.startsWith('[Briscola]')&&g.players.length>=2
-            ? `<button class="btn-green" onclick="resumeGame('${g.id}')">▶ Riprendi</button>` : ''}
-        </div>`;
+        <div class="d-flex gap-2 align-items-center">${statusBadge}${resumeBtn}</div>`;
       el.appendChild(div);
     }
-  }catch(e){ el.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  }catch(e){ el.innerHTML=`<span class="text-danger">${e.message}</span>`; }
 }
 
 async function resumeGame(gid){
-  try{
-    const s = await resolveSessionFromPlayers(gid);
-    startGameSession(gid, s.meId, s.oppId, s.role);
-  }catch(e){ toast(e.message,'err'); }
+  try{ const s = await resolveSessionFromPlayers(gid); startGameSession(gid, s.meId, s.oppId, s.role); }
+  catch(e){ toast(e.message,'err'); }
 }
 
-/* ── START GAME SESSION ──────────────────────────── */
+/* ── START GAME SESSION ─────────────────────────── */
 async function startGameSession(gid, myPidVal, oppPidVal, role){
-  gameId  = gid;
-  myPid   = myPidVal;
-  oppPid  = oppPidVal;
-  myRole  = role;
-  posting = false;
-
+  gameId=gid; myPid=myPidVal; oppPid=oppPidVal; myRole=role; posting=false;
   document.getElementById('hdr-game').textContent = `Partita: ${gid.slice(0,10)}…`;
-
-  // Load latest state
   const ok = await syncState();
   if(!ok) return;
-
   showScreen('game');
   renderBoard();
   startPoll();
-  if(gs.phase==='finished') { stopPoll(); showWinner(); }
+  if(gs.phase==='finished'){ stopPoll(); showWinner(); }
 }
 
-/* ── SYNC STATE (fetch latest move) ─────────────── */
+/* ── SYNC STATE ─────────────────────────────────── */
 async function syncState(){
   try{
     const md = await api('GET',`/games/${gameId}/moves`);
@@ -1064,122 +833,88 @@ async function syncState(){
     return true;
   }catch(e){
     const msg = (e?.message || '').toLowerCase();
-    if(msg.includes('game not found')){
-      toast('Partita chiusa: un giocatore ha abbandonato.','info');
-      goLobby();
-      return false;
-    }
-    toast(e.message,'err');
-    return false;
+    if(msg.includes('game not found')){ toast('Partita chiusa: un giocatore ha abbandonato.','info'); goLobby(); return false; }
+    toast(e.message,'err'); return false;
   }
 }
 
 /* ── POLLING ─────────────────────────────────────── */
 function startPoll(){
   stopPoll();
-  document.getElementById('poll-ind').style.display =
-    isMyTurn() ? 'none' : 'flex';
+  const pollInd = document.getElementById('poll-ind');
+  if(pollInd) pollInd.classList.toggle('d-none', isMyTurn());
   pollTimer = setInterval(pollOnce, 2500);
 }
 function stopPoll(){
   clearInterval(pollTimer); pollTimer=null;
-  document.getElementById('poll-ind').style.display='none';
+  const pollInd = document.getElementById('poll-ind');
+  if(pollInd) pollInd.classList.add('d-none');
 }
 
 async function pollOnce(){
-  if(posting) return; // don't poll while we're writing
-  const prevCurrent = gs?.current;
-  const prevTrick   = gs?.trick?.length;
-  const prevPhase   = gs?.phase;
+  if(posting) return;
+  const prevCurrent=gs?.current, prevTrick=gs?.trick?.length, prevPhase=gs?.phase;
   const synced = await syncState();
   if(!synced) return;
   renderBoard();
-  if(gs.phase==='finished' && prevPhase!=='finished'){
-    stopPoll(); showWinner(); return;
-  }
-  // Notify if something changed
+  if(gs.phase==='finished' && prevPhase!=='finished'){ stopPoll(); showWinner(); return; }
   if(gs.current !== prevCurrent || gs.trick?.length !== prevTrick){
-    if(isMyTurn()) {
+    const pollInd = document.getElementById('poll-ind');
+    if(isMyTurn()){
       toast('È il tuo turno! 🎴','ok');
-      document.getElementById('poll-ind').style.display='none';
+      if(pollInd) pollInd.classList.add('d-none');
     } else {
-      document.getElementById('poll-ind').style.display='flex';
+      if(pollInd) pollInd.classList.remove('d-none');
     }
   }
 }
 
 function isMyTurn(){ return gs && gs.current===myPid && gs.phase==='playing'; }
 
-/* ── PLAY CARD ──────────────────────────────────── */
+/* ── PLAY CARD ───────────────────────────────────── */
 async function playCard(card){
   if(posting){ toast('Attendere…','info'); return; }
   if(!isMyTurn()){ toast('Non è il tuo turno!','err'); return; }
-  posting=true;
-  stopPoll();
-
-  // Remove card from hand
+  posting=true; stopPoll();
   const hand=gs.hands[myPid];
   const idx=hand.findIndex(c=>c.suit===card.suit&&c.rank===card.rank);
   if(idx===-1){ posting=false; startPoll(); return; }
   hand.splice(idx,1);
   gs.trick.push({pid:myPid, card});
-
   let desc = `${pname(myPid)} gioca ${lbl(card)}`;
-
   if(gs.trick.length===1){
-    // Primo a giocare – aspetta avversario
-    gs.lead   = myPid;
-    gs.current= oppPid;
+    gs.lead=myPid; gs.current=oppPid;
     await persist('play',desc);
   } else {
-    // Secondo a giocare – risolvi trick
-    const t  = gs.trick;
-    const w  = trickWinner(t[0].card, t[1].card, t[0].card.suit, gs.briscola.suit);
-    const winnerPid  = t[w].pid;
-    const loserPid   = t[1-w].pid;
-    const pts = cardPts(t[0].card)+cardPts(t[1].card);
-
-    gs.scores[winnerPid]  = (gs.scores[winnerPid]||0)+pts;
+    const t=gs.trick;
+    const w=trickWinner(t[0].card,t[1].card,t[0].card.suit,gs.briscola.suit);
+    const winnerPid=t[w].pid, loserPid=t[1-w].pid;
+    const pts=cardPts(t[0].card)+cardPts(t[1].card);
+    gs.scores[winnerPid]=(gs.scores[winnerPid]||0)+pts;
     gs.captured[winnerPid]=[...(gs.captured[winnerPid]||[]),t[0].card,t[1].card];
-
-    // Draw (winner first)
     if(gs.deck.length) gs.hands[winnerPid].push(gs.deck.shift());
     if(gs.deck.length) gs.hands[loserPid].push(gs.deck.shift());
-
-    gs.trick   = [];
-    gs.current = winnerPid;
-    gs.lead    = null;
-    gs.round++;
-
+    gs.trick=[]; gs.current=winnerPid; gs.lead=null; gs.round++;
     desc += ` → ${pname(winnerPid)} vince il trick (${pts} pt)`;
-
     if(!gs.hands[myPid].length && !gs.hands[oppPid].length && !gs.deck.length){
       gs.phase='finished';
       const sm=gs.scores[myPid]||0, so=gs.scores[oppPid]||0;
-      gs.winner = sm>so?myPid:so>sm?oppPid:'draw';
+      gs.winner=sm>so?myPid:so>sm?oppPid:'draw';
     }
-
     await persist('trick',desc);
-
     if(gs.phase==='finished'){
       try{ await api('PUT',`/games/${gameId}`,{status:'finished'}); }catch(_){}
     }
   }
-
-  posting=false;
-  renderBoard();
+  posting=false; renderBoard();
   if(gs.phase==='finished'){ stopPoll(); showWinner(); return; }
   startPoll();
 }
 
 async function persist(type, description){
-  await api('POST',`/games/${gameId}/moves`,{
-    playerId: myPid,
-    data: { type, description, state: gs }
-  });
+  await api('POST',`/games/${gameId}/moves`,{ playerId: myPid, data: { type, description, state: gs } });
 }
 
-function otherOf(pid){ return pid===myPid?oppPid:myPid; }
 function pname(pid){
   if(!gs) return pid;
   return pid===myPid ? document.getElementById('lbl-me').textContent
@@ -1189,79 +924,47 @@ function pname(pid){
 /* ── RENDER ──────────────────────────────────────── */
 function renderBoard(){
   if(!gs) return;
-
-  // Fetch player names from game state keys (display)
-  // We'll use labels from DOM (set once at startGame)
-  const myLabel  = myRole==='p1' ? 'Giocatore 1' : 'Giocatore 2';
-  const oppLabel = myRole==='p1' ? 'Giocatore 2' : 'Giocatore 1';
-
-  // Try to get real names from API game data if available
-  // (We set them via the invite flow – just use myName here)
   document.getElementById('lbl-me').textContent  = myName;
-  document.getElementById('lbl-opp').textContent = myRole==='p1'?'Avversario':'Avversario';
+  document.getElementById('lbl-opp').textContent = 'Avversario';
   document.getElementById('sc-lbl-me').textContent  = myName;
   document.getElementById('sc-lbl-opp').textContent = 'Avversario';
-
-  // Scores
   document.getElementById('sc-me').textContent  = gs.scores[myPid]||0;
   document.getElementById('sc-opp').textContent = gs.scores[oppPid]||0;
-
-  // Counts
   document.getElementById('cnt-me').textContent  = `${(gs.hands[myPid]||[]).length} carte`;
   document.getElementById('cnt-opp').textContent = `${(gs.hands[oppPid]||[]).length} carte`;
-
-  // Active dots
   const myTurn  = gs.current===myPid  && gs.phase==='playing';
   const oppTurn = gs.current===oppPid && gs.phase==='playing';
   document.getElementById('dot-me').classList.toggle('on', myTurn);
   document.getElementById('dot-opp').classList.toggle('on', oppTurn);
   document.getElementById('zone-me').classList.toggle('waiting', !myTurn && gs.phase==='playing');
-
-  // My hand (face-up, playable if my turn)
   renderHand('hand-me', gs.hands[myPid]||[], myTurn);
-  // Opponent hand (face-down)
   renderHandBack('hand-opp', (gs.hands[oppPid]||[]).length);
-
   // Deck
-  const dvz=document.getElementById('deck-viz');
-  dvz.innerHTML='';
+  const dvz=document.getElementById('deck-viz'); dvz.innerHTML='';
   if(gs.deck.length>0){
-    const back=mkBack();
-    back.style.cssText='position:absolute;top:0;left:0;z-index:2;';
-    const bc=mkCard(gs.briscola,false);
-    bc.classList.add('briscola-highlight');
+    const back=mkBack(); back.style.cssText='position:absolute;top:0;left:0;z-index:2;';
+    const bc=mkCard(gs.briscola,false); bc.classList.add('briscola-highlight');
     bc.style.cssText='position:absolute;bottom:0;left:18px;transform:rotate(90deg) translateY(50%);z-index:1;';
     dvz.appendChild(back); dvz.appendChild(bc);
-  } else {
-    const ph=document.createElement('div'); ph.className='card-ph green'; dvz.appendChild(ph);
-  }
+  } else { const ph=document.createElement('div'); ph.className='card-ph green'; dvz.appendChild(ph); }
   document.getElementById('deck-cnt').textContent=`${gs.deck.length} rimaste`;
-
   // Trick
-  const ta=document.getElementById('trick-area');
-  ta.innerHTML='';
-  if(!gs.trick.length){
-    ta.appendChild(mkPh()); ta.appendChild(mkPh());
-  } else {
+  const ta=document.getElementById('trick-area'); ta.innerHTML='';
+  if(!gs.trick.length){ ta.appendChild(mkPh()); ta.appendChild(mkPh()); }
+  else {
     for(const t of gs.trick){
-      const w=document.createElement('div');
-      w.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;';
-      const nm=document.createElement('small');
-      nm.style.cssText='color:#aaa;font-size:.7rem;';
-      nm.textContent = t.pid===myPid?myName:'Avversario';
-      w.appendChild(mkCard(t.card,false,true));
-      w.appendChild(nm);
-      ta.appendChild(w);
+      const w=document.createElement('div'); w.className='d-flex flex-column align-items-center gap-1';
+      const nm=document.createElement('small'); nm.style.cssText='color:#aaa;font-size:.7rem;';
+      nm.textContent=t.pid===myPid?myName:'Avversario';
+      w.appendChild(mkCard(t.card,false,true)); w.appendChild(nm); ta.appendChild(w);
     }
   }
-
-  // Status
   updateStatus();
 }
 
 function renderHand(elId, cards, playable){
   const el=document.getElementById(elId); el.innerHTML='';
-  if(!cards.length){ el.innerHTML='<em style="color:#555;font-size:.8rem">—</em>'; return; }
+  if(!cards.length){ el.innerHTML='<em class="text-secondary" style="font-size:.8rem">—</em>'; return; }
   for(const c of cards){
     const cd=mkCard(c, playable);
     if(playable) cd.addEventListener('click',()=>playCard(c));
@@ -1274,67 +977,51 @@ function renderHandBack(elId, count){
 }
 
 const RANK_FILE = {as:'asso','2':'due','3':'tre','4':'quattro','5':'cinque','6':'sei','7':'sette',fante:'fante',cavallo:'cavallo',re:'re'};
-function cardSrc(c, cardDir = getCardDir()){
-  return `/frontend/img/${cardDir}/${RANK_FILE[c.rank]}_${c.suit}.jpg`;
-}
+function cardSrc(c, cardDir = getCardDir()){ return `/frontend/img/${cardDir}/${RANK_FILE[c.rank]}_${c.suit}.jpg`; }
 
 function mkCard(c, playable, played){
   const d=document.createElement('div');
-  d.className=`card${playable?' playable':''}${played?' played':''}`;
+  d.className=`card-tile${playable?' playable':''}${played?' played':''}`;
   const img=document.createElement('img');
   img.src=cardSrc(c);
-  img.onerror=()=>{
-    if(img.dataset.fallbackTried) return;
-    img.dataset.fallbackTried='1';
-    img.src=cardSrc(c, getFallbackCardDir());
-  };
-  img.alt=`${RANK_LABEL[c.rank]} di ${c.suit}`;
-  img.draggable=false;
-  d.appendChild(img);
-  d.title=`${RANK_LABEL[c.rank]} di ${c.suit} (${POINTS[c.rank]||0} pt)`;
+  img.onerror=()=>{ if(img.dataset.fallbackTried) return; img.dataset.fallbackTried='1'; img.src=cardSrc(c, getFallbackCardDir()); };
+  img.alt=`${RANK_LABEL[c.rank]} di ${c.suit}`; img.draggable=false;
+  d.appendChild(img); d.title=`${RANK_LABEL[c.rank]} di ${c.suit} (${POINTS[c.rank]||0} pt)`;
   return d;
 }
-function mkBack(){
-  const d=document.createElement('div'); d.className='card card-back'; return d;
-}
-function mkPh(){
-  const d=document.createElement('div'); d.className='card-ph'; return d;
-}
+function mkBack(){ const d=document.createElement('div'); d.className='card-tile card-back'; return d; }
+function mkPh(){ const d=document.createElement('div'); d.className='card-ph'; return d; }
 
 function updateStatus(){
   if(!gs) return;
   let msg='';
-  const poll=document.getElementById('poll-ind');
+  const pollInd=document.getElementById('poll-ind');
   if(gs.phase==='finished'){
-    msg='🏁 Partita terminata!'; poll.style.display='none';
+    msg='🏁 Partita terminata!'; if(pollInd) pollInd.classList.add('d-none');
   } else if(isMyTurn()){
-    msg=gs.trick.length===1
-      ? '🎴 Rispondi alla carta giocata!'
-      : '🎴 <strong>Tocca a te!</strong> Scegli una carta.';
-    poll.style.display='none';
+    msg=gs.trick.length===1 ? '🎴 Rispondi alla carta giocata!' : '🎴 <strong>Tocca a te!</strong> Scegli una carta.';
+    if(pollInd) pollInd.classList.add('d-none');
   } else {
     msg='⏳ In attesa della mossa dell\'avversario…';
-    poll.style.display='flex';
+    if(pollInd) pollInd.classList.remove('d-none');
   }
   document.getElementById('status-msg').innerHTML=msg;
 }
 
-/* ── MOVES LOG ────────────────────────────────────── */
+/* ── MOVES LOG ───────────────────────────────────── */
 function renderMovesLog(moves){
   const el=document.getElementById('moves-log'); el.innerHTML='';
   const list=[...moves].reverse().slice(0,50);
   for(const m of list){
     const div=document.createElement('div');
-    const isMine = m.playerId===myPid;
-    div.className=`log-entry${isMine?' mine':''}`;
+    div.className=`log-entry${m.playerId===myPid?' mine':''}`;
     const t=new Date(m.timestamp).toLocaleTimeString('it-IT');
-    const desc=m.data?.description||m.data?.type||'—';
-    div.textContent=`[${t}] ${desc}`;
+    div.textContent=`[${t}] ${m.data?.description||m.data?.type||'—'}`;
     el.appendChild(div);
   }
 }
 
-/* ── ABANDON ──────────────────────────────────────── */
+/* ── ABANDON ─────────────────────────────────────── */
 async function abandonGame(){
   if(!confirm('Abbandonare la partita?')) return;
   if(!gameId){ goLobby(); return; }
@@ -1344,18 +1031,15 @@ async function abandonGame(){
     await api('DELETE',`/games/${gameId}`);
     toast('Partita chiusa per entrambi i giocatori.','info');
   }catch(e){
-    const msg = (e?.message || '').toLowerCase();
-    if(!msg.includes('game not found')){
-      toast(e.message,'err');
-    }
+    const msg=(e?.message||'').toLowerCase();
+    if(!msg.includes('game not found')) toast(e.message,'err');
   }
   goLobby();
 }
 
-/* ── LOBBY ──────────────────────────────────────────── */
+/* ── LOBBY ───────────────────────────────────────── */
 function goLobby(){
-  stopPoll();
-  stopQueueMatch();
+  stopPoll(); stopQueueMatch();
   gameId=null; myPid=null; oppPid=null; gs=null; pendingInvite=null;
   document.getElementById('invite-box').style.display='none';
   document.getElementById('hdr-game').textContent='';
@@ -1364,18 +1048,15 @@ function goLobby(){
   loadGames();
 }
 
-/* ── WINNER ───────────────────────────────────────── */
+/* ── WINNER ──────────────────────────────────────── */
 function showWinner(){
-  const sm=gs.scores[myPid]||0;
-  const so=gs.scores[oppPid]||0;
+  const sm=gs.scores[myPid]||0, so=gs.scores[oppPid]||0;
   const myLbl=document.getElementById('lbl-me').textContent;
   const oppLbl=document.getElementById('lbl-opp').textContent;
-
-  document.getElementById('w-sc-me').textContent  = sm;
-  document.getElementById('w-sc-opp').textContent = so;
-  document.getElementById('w-lbl-me').textContent  = myLbl;
-  document.getElementById('w-lbl-opp').textContent = oppLbl;
-
+  document.getElementById('w-sc-me').textContent=sm;
+  document.getElementById('w-sc-opp').textContent=so;
+  document.getElementById('w-lbl-me').textContent=myLbl;
+  document.getElementById('w-lbl-opp').textContent=oppLbl;
   if(gs.winner==='draw'){
     document.getElementById('w-emoji').textContent='🤝';
     document.getElementById('w-title').textContent='Pareggio!';
