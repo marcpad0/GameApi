@@ -1238,17 +1238,6 @@
       return sc(c2) > sc(c1) ? 1 : 0;
     }
 
-    function latestStateFromMoves(moves) {
-      const list = Array.isArray(moves) ? moves : [];
-      let latest = null, latestMs = -Infinity;
-      for (const m of list) {
-        if (!m?.data?.state || m?.data?.type === 'presence' || m?.data?.type === 'chat' || m?.data?.type === 'chat_read') continue;
-        const ms = tsMs(m?.timestamp); if (!Number.isFinite(ms)) continue;
-        if (ms >= latestMs) { latest = m; latestMs = ms; }
-      }
-      return latest?.data?.state || null;
-    }
-
     function collectLastSeenByPlayer(moves) {
       const seen = {};
       for (const m of (Array.isArray(moves) ? moves : [])) {
@@ -1356,7 +1345,7 @@
     let myIdentityName = getStoredIdentityName() || makePlayerIdentityName(myName);
     localStorage.setItem(PLAYER_NAME_IDENTITY_STORAGE_KEY, myIdentityName);
     let gameId = null, myPid = null, oppPid = null, myRole = null, gs = null;
-    let pollTimer = null, posting = false;
+    let pollTimer = null, posting = false, playLock = false;
     let cardTheme = persistCardTheme(localStorage.getItem(CARD_THEME_STORAGE_KEY) || DEFAULT_CARD_THEME);
     let pendingInvite = null, queueTimer = null, queueGameId = null, queueChecking = false;
     let oppNameResolved = 'Avversario';
@@ -1861,7 +1850,7 @@
       const pi = document.getElementById('poll-ind'); if (pi) pi.classList.add('d-none');
     }
     async function pollOnce() {
-      if (posting || botThinking) return;
+      if (posting || botThinking || playLock) return;
       const prevCurrent = gs?.current, prevTrick = gs?.trick?.length, prevPhase = gs?.phase;
       const synced = await syncState(); if (!synced) return;
       if (enforceCurrentPlayerLockout()) return;
@@ -1897,7 +1886,7 @@
       return true;
     }
     async function maybeBotPlayTurn() {
-      if (!gs || gs.phase !== 'playing' || !isOpponentBotActive() || gs.current !== oppPid || posting || botThinking) return;
+      if (!gs || gs.phase !== 'playing' || !isOpponentBotActive() || gs.current !== oppPid || posting || botThinking || playLock) return;
       botThinking = true;
       try {
         const delay = BOT_THINK_MIN_MS + Math.floor(Math.random() * (BOT_THINK_MAX_MS - BOT_THINK_MIN_MS + 1));
@@ -1915,12 +1904,12 @@
        PLAY CARD
     ════════════════════════════════════════ */
     async function playCardAs(actorPid, card) {
-      if (posting || !gs || gs.phase !== 'playing' || !actorPid || !card || gs.current !== actorPid) return false;
-      posting = true; stopPoll();
+      if (posting || playLock || !gs || gs.phase !== 'playing' || !actorPid || !card || gs.current !== actorPid) return false;
+      posting = true; playLock = true; stopPoll();
       try {
         const hand = gs.hands?.[actorPid] || [];
         const idx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
-        if (idx === -1) return false;
+        if (idx === -1) { return false; }
         hand.splice(idx, 1); gs.trick.push({ pid: actorPid, card });
         if (actorPid === myPid) soundCard();
         let desc = `${pname(actorPid)} gioca ${lbl(card)}`;
@@ -1937,8 +1926,9 @@
           renderBoard(); await wait(TRICK_REVEAL_DELAY_MS);
           gs.scores[winnerPid] = (gs.scores[winnerPid] || 0) + pts;
           gs.captured[winnerPid] = [...(gs.captured[winnerPid] || []), t[0].card, t[1].card];
-          if (gs.deck.length) gs.hands[winnerPid].push(gs.deck.shift());
-          if (gs.deck.length) gs.hands[loserPid].push(gs.deck.shift());
+          // Guard: only draw if hand won't exceed 3 cards (prevents race-condition duplicates)
+          if (gs.deck.length && (gs.hands[winnerPid] || []).length < 3) gs.hands[winnerPid].push(gs.deck.shift());
+          if (gs.deck.length && (gs.hands[loserPid] || []).length < 3) gs.hands[loserPid].push(gs.deck.shift());
           gs.trick = []; gs.current = winnerPid; gs.lead = null; gs.round++;
           desc += ` → ${pname(winnerPid)} vince il trick (${pts} pt)`;
           if (actorPid === myPid) { if (winnerPid === myPid) soundTrickWin(); else soundTrickLoss(); }
@@ -1952,24 +1942,33 @@
         }
         return true;
       } finally {
-        posting = false; renderBoard();
+        posting = false; playLock = false; renderBoard();
         if (gs.phase === 'finished') { stopPoll(); stopChatRefresh(); showWinner(); }
         else startPoll();
       }
     }
 
     async function playCard(card) {
-      if (posting || botThinking || playPrecheckInFlight) { toast('Attendere…', 'info'); return; }
-      playPrecheckInFlight = true;
-      const synced = await syncState();
-      if (!synced) { playPrecheckInFlight = false; return; }
-      if (enforceCurrentPlayerLockout()) { playPrecheckInFlight = false; return; }
-      renderBoard();
-      if (!isMyTurn()) { toast('Non è il tuo turno!', 'err'); playPrecheckInFlight = false; return; }
-      const hand = gs.hands?.[myPid] || [];
-      if (!hand.some(c => c.suit === card.suit && c.rank === card.rank)) { toast('Carta non disponibile.', 'info'); playPrecheckInFlight = false; return; }
-      playPrecheckInFlight = false;
-      await playCardAs(myPid, card);
+      // Unified lock: block any overlapping clicks immediately
+      if (posting || playLock || botThinking || playPrecheckInFlight) { return; }
+      playPrecheckInFlight = true; playLock = true;
+      try {
+        const synced = await syncState();
+        if (!synced) return;
+        if (enforceCurrentPlayerLockout()) return;
+        renderBoard();
+        if (!isMyTurn()) { toast('Non è il tuo turno!', 'err'); return; }
+        const hand = gs.hands?.[myPid] || [];
+        if (!hand.some(c => c.suit === card.suit && c.rank === card.rank)) { toast('Carta non disponibile.', 'info'); return; }
+        // Release playLock so playCardAs can re-acquire it
+        playLock = false;
+        playPrecheckInFlight = false;
+        await playCardAs(myPid, card);
+        return; // skip the finally cleanup for playLock since playCardAs handled it
+      } finally {
+        playPrecheckInFlight = false;
+        playLock = false;
+      }
     }
 
     async function persistAs(pid, type, desc) { await api('POST', `/games/${gameId}/moves`, { playerId: pid, data: { type, description: desc, state: gs } }); }
