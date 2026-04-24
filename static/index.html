@@ -1346,6 +1346,7 @@
     localStorage.setItem(PLAYER_NAME_IDENTITY_STORAGE_KEY, myIdentityName);
     let gameId = null, myPid = null, oppPid = null, myRole = null, gs = null;
     let pollTimer = null, posting = false, playLock = false;
+    let rematchInProgress = false, rematchPollTimer = null, finishedGameId = null, finishedMyPid = null, finishedOppPid = null;
     let cardTheme = persistCardTheme(localStorage.getItem(CARD_THEME_STORAGE_KEY) || DEFAULT_CARD_THEME);
     let pendingInvite = null, queueTimer = null, queueGameId = null, queueChecking = false;
     let oppNameResolved = 'Avversario';
@@ -2078,6 +2079,8 @@
     ════════════════════════════════════════ */
     function showWinner() {
       if (!gs) return;
+      // Save finished game context for rematch coordination
+      finishedGameId = gameId; finishedMyPid = myPid; finishedOppPid = oppPid;
       const sm = gs.scores[myPid] || 0, so = gs.scores[oppPid] || 0;
       const title = document.getElementById('winner-title');
       const msgEl = document.getElementById('winner-msg');
@@ -2105,28 +2108,131 @@
     /* ════════════════════════════════════════
        REMATCH
     ════════════════════════════════════════ */
+    function stopRematchPoll() { clearInterval(rematchPollTimer); rematchPollTimer = null; }
+
     async function startRematch() {
+      if (rematchInProgress) { toast('Rivincita già in corso…', 'info'); return; }
+      rematchInProgress = true;
+      // Save old game context before goLobby clears it
+      const oldGameId = finishedGameId || gameId;
+      const oldMyPid = finishedMyPid || myPid;
+      const oldOppPid = finishedOppPid || oppPid;
       document.getElementById('winner-overlay').classList.remove('show');
-      toast('Creando rivincita…', 'info');
+      toast('Cerco rivincita…', 'info');
       try {
         await assertDisplayNameAvailable(myName);
-        const gd = await api('POST', '/games', { name: `[Briscola][Private] ${myName} vs ???` });
+
+        // Step 1: Check if opponent already posted a rematch_offer
+        if (oldGameId) {
+          try {
+            const md = await api('GET', `/games/${oldGameId}/moves`);
+            const offers = (md.moves || []).filter(m => m.data?.type === 'rematch_offer' && m.data?.rematchGameId && m.playerId !== oldMyPid);
+            if (offers.length > 0) {
+              // Opponent already created a rematch game — join it!
+              const offer = offers[offers.length - 1];
+              const rematchGid = offer.data.rematchGameId;
+              toast('Rivincita trovata! Entro…', 'ok');
+              await joinRematchGame(rematchGid);
+              return;
+            }
+          } catch (_) { /* old game may be deleted, proceed to create */ }
+        }
+
+        // Step 2: No offer found — create a new rematch game
+        const gd = await api('POST', '/games', { name: `[Briscola][Rematch] ${myName} vs ???` });
         const gid = gd.game.id;
         const r1 = await api('POST', `/games/${gid}/players`, { name: getMyIdentityName() });
         const r2 = await api('POST', `/games/${gid}/players`, { name: 'In attesa…' });
         const st = initState(r1.player.id, r2.player.id);
         await api('POST', `/games/${gid}/moves`, { playerId: r1.player.id, data: { type: 'init', description: 'Rivincita!', state: st } });
         rememberPlayerSession(gid, r1.player.id, 'p1', myName);
+
+        // Step 3: Post rematch_offer to OLD game so opponent can find it
+        if (oldGameId && oldMyPid) {
+          try {
+            await api('POST', `/games/${oldGameId}/moves`, {
+              playerId: oldMyPid,
+              data: { type: 'rematch_offer', description: `${myName} propone rivincita`, rematchGameId: gid }
+            });
+          } catch (_) { /* old game might be gone */ }
+        }
+
         pendingInvite = { gameId: gid, p1id: r1.player.id, p2id: r2.player.id };
         const base = location.href.split('?')[0];
         const token = makeInviteToken({ join: gid, p1id: r1.player.id, p2id: r2.player.id, as: 'p2' });
         const link = `${base}?invite=${token}`;
         await navigator.clipboard.writeText(link).catch(() => { });
-        toast('Link rivincita copiato! Mandalo all\'avversario 🔗', 'ok');
+
         goLobby();
         document.getElementById('invite-link').value = link;
         document.getElementById('invite-box').style.display = 'block';
+        toast('Rivincita creata! In attesa dell\'avversario… (link copiato) 🔗', 'ok');
+
+        // Step 4: Poll the new game waiting for opponent to join, also re-check for conflicts
+        startRematchPoll(gid, oldGameId, oldMyPid);
+
       } catch (e) { toast(e.message, 'err'); }
+      finally { rematchInProgress = false; }
+    }
+
+    function startRematchPoll(newGid, oldGid, oldMyPid) {
+      stopRematchPoll();
+      let checks = 0;
+      rematchPollTimer = setInterval(async () => {
+        checks++;
+        if (checks > 120) { stopRematchPoll(); return; } // stop after ~4 minutes
+        try {
+          // Check if opponent joined our game (moves > 1 means someone joined)
+          const gd = await api('GET', `/games/${newGid}`);
+          const g = gd.game;
+          if (!g || g.status === 'finished') { stopRematchPoll(); return; }
+          if ((g.moves?.length || 0) > 1) {
+            // Opponent joined!
+            stopRematchPoll();
+            toast('Avversario trovato! Inizia la rivincita!', 'ok');
+            const s = await resolveSessionFromPlayers(newGid);
+            await startGameSession(newGid, s.meId, s.oppId, s.role);
+            return;
+          }
+
+          // Also check old game for a conflicting rematch_offer from opponent
+          if (oldGid) {
+            try {
+              const md = await api('GET', `/games/${oldGid}/moves`);
+              const oppOffers = (md.moves || []).filter(m => m.data?.type === 'rematch_offer' && m.data?.rematchGameId && m.playerId !== oldMyPid);
+              if (oppOffers.length > 0) {
+                const oppGid = oppOffers[oppOffers.length - 1].data.rematchGameId;
+                if (oppGid !== newGid) {
+                  // Conflict: both created games. Tiebreak by lower game ID.
+                  const winnerGid = newGid < oppGid ? newGid : oppGid;
+                  const loserGid = winnerGid === newGid ? oppGid : newGid;
+                  if (winnerGid !== newGid) {
+                    // We lost the tiebreak — delete our game and join theirs
+                    stopRematchPoll();
+                    try { await api('DELETE', `/games/${newGid}`); } catch (_) { }
+                    toast('Rivincita trovata! Entro…', 'ok');
+                    await joinRematchGame(oppGid);
+                    return;
+                  }
+                  // We won — opponent should join us, just keep waiting
+                }
+              }
+            } catch (_) { }
+          }
+        } catch (_) { }
+      }, 2000);
+    }
+
+    async function joinRematchGame(rematchGid) {
+      try {
+        try { await api('PUT', `/games/${rematchGid}`, { name: `[Briscola][Rematch] ??? vs ${myName}` }); } catch (_) { }
+        const s = await resolveSessionFromPlayers(rematchGid);
+        await markJoinedIfNeeded(rematchGid, s.meId);
+        await startGameSession(rematchGid, s.meId, s.oppId, s.role);
+      } catch (e) {
+        toast(e.message || 'Errore rivincita', 'err');
+        goLobby();
+      }
     }
 
     /* ════════════════════════════════════════
@@ -2149,9 +2255,9 @@
        LOBBY
     ════════════════════════════════════════ */
     function goLobby() {
-      stopPoll(); stopQueueMatch(); stopPresenceHeartbeat(); stopChatRefresh();
+      stopPoll(); stopQueueMatch(); stopPresenceHeartbeat(); stopChatRefresh(); stopRematchPoll();
       botThinking = false; lastSeenByPlayer = {}; opponentInactivityResetAtMs = 0; pageWasHidden = false;
-      gameId = null; myPid = null; oppPid = null; gs = null; pendingInvite = null;
+      gameId = null; myPid = null; oppPid = null; gs = null; pendingInvite = null; playLock = false; playPrecheckInFlight = false;
       activeSideTab = 'log'; renderedChatTs.clear();
       const chatMsgs = document.getElementById('chat-messages');
       if (chatMsgs) chatMsgs.innerHTML = '<div class="chat-system">La chat è attiva!</div>';
