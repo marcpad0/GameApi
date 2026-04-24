@@ -1115,6 +1115,7 @@
 
     const CARD_THEME_STORAGE_KEY = 'bris_card_theme';
     const PLAYER_NAME_STORAGE_KEY = 'bris_name';
+    const PLAYER_NAME_IDENTITY_STORAGE_KEY = 'bris_name_identity';
     const PLAYER_SESSION_STORAGE_KEY = 'bris_player_sessions';
     const QUEUE_GAME_STORAGE_KEY = 'bris_queue_game';
     const HISTORY_KEY = 'bris_history';
@@ -1132,8 +1133,39 @@
     const PLAYER_INACTIVE_TIMEOUT_MS = 20 * 1000;
     const BOT_THINK_MIN_MS = 900;
     const BOT_THINK_MAX_MS = 1600;
+    const PLAYER_NAME_TAG_SEPARATOR = '#';
+    const PLAYER_NAME_TAG_LEN = 16;
+    const PLAYER_NAME_TAG_RE = new RegExp(`${PLAYER_NAME_TAG_SEPARATOR}([A-Za-z0-9]{${PLAYER_NAME_TAG_LEN}})$`);
 
-    function sanitizeDisplayName(name) { return String(name || '').replace(/\s+/g, ' ').trim().slice(0, 30); }
+    function sanitizeDisplayName(name) { return stripPlayerNameTag(String(name || '')).replace(/\s+/g, ' ').trim().slice(0, 30); }
+    function stripPlayerNameTag(name) { return String(name || '').replace(PLAYER_NAME_TAG_RE, ''); }
+    function stripPlayerNameTagsFromText(text) { return String(text || '').replace(new RegExp(`${PLAYER_NAME_TAG_SEPARATOR}[A-Za-z0-9]{${PLAYER_NAME_TAG_LEN}}\\b`, 'g'), ''); }
+    function extractPlayerNameTag(name) { const m = String(name || '').trim().match(PLAYER_NAME_TAG_RE); return m ? m[1] : ''; }
+    function makePlayerNameTag() {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let out = '';
+      for (let i = 0; i < PLAYER_NAME_TAG_LEN; i++) out += chars[(Math.random() * chars.length) | 0];
+      return out;
+    }
+    function makePlayerIdentityName(displayName, preferredTag = '') {
+      const base = sanitizeDisplayName(displayName);
+      if (!base) return '';
+      const tagRe = new RegExp(`^[A-Za-z0-9]{${PLAYER_NAME_TAG_LEN}}$`);
+      const tag = tagRe.test(preferredTag) ? preferredTag : makePlayerNameTag();
+      return `${base}${PLAYER_NAME_TAG_SEPARATOR}${tag}`;
+    }
+    function getStoredIdentityName() {
+      const raw = String(localStorage.getItem(PLAYER_NAME_IDENTITY_STORAGE_KEY) || '').trim();
+      if (!raw) return '';
+      const base = sanitizeDisplayName(raw);
+      if (!base) return '';
+      return makePlayerIdentityName(base, extractPlayerNameTag(raw));
+    }
+    function getMyIdentityName() {
+      if (!myIdentityName) myIdentityName = makePlayerIdentityName(myName);
+      return myIdentityName;
+    }
+    function normPlayerIdentityName(n) { return String(n || '').trim().toLowerCase(); }
     function persistCardTheme(t) { const s = CARD_THEMES[t] ? t : DEFAULT_CARD_THEME; localStorage.setItem(CARD_THEME_STORAGE_KEY, s); return s; }
     function getStoredDisplayName() { return sanitizeDisplayName(localStorage.getItem(PLAYER_NAME_STORAGE_KEY) || ''); }
     function loadPlayerSessions() {
@@ -1183,7 +1215,11 @@
     }
     function persistDisplayName(name) {
       const s = sanitizeDisplayName(name); if (!s) return false;
-      myName = s; localStorage.setItem(PLAYER_NAME_STORAGE_KEY, s);
+      const prevTag = extractPlayerNameTag(myIdentityName || getStoredIdentityName());
+      myName = s;
+      myIdentityName = makePlayerIdentityName(s, prevTag);
+      localStorage.setItem(PLAYER_NAME_STORAGE_KEY, s);
+      localStorage.setItem(PLAYER_NAME_IDENTITY_STORAGE_KEY, myIdentityName);
       const a = document.getElementById('inp-display-name'); if (a && a.value !== s) a.value = s;
       const b = document.getElementById('inp-settings-name'); if (b && b.value !== s) b.value = s;
       const h = document.getElementById('hdr-user'); if (h) h.textContent = `👤 ${myName}`;
@@ -1317,6 +1353,8 @@
     const INTERNAL_API_KEY = 'f9d64788-71e9-4b54-9d88-42c4005feaa91eab062d0cf54ddbaf3cd8c620293e29';
     let apiKey = INTERNAL_API_KEY;
     let myName = getStoredDisplayName() || DEFAULT_PLAYER_NAME;
+    let myIdentityName = getStoredIdentityName() || makePlayerIdentityName(myName);
+    localStorage.setItem(PLAYER_NAME_IDENTITY_STORAGE_KEY, myIdentityName);
     let gameId = null, myPid = null, oppPid = null, myRole = null, gs = null;
     let pollTimer = null, posting = false;
     let cardTheme = persistCardTheme(localStorage.getItem(CARD_THEME_STORAGE_KEY) || DEFAULT_CARD_THEME);
@@ -1393,11 +1431,6 @@
       const chosen = sanitizeDisplayName(name);
       if (!chosen) throw new Error('Inserisci un nome valido');
       if (isReservedPlayerName(chosen)) throw new Error('Questo nome non è disponibile');
-      const allowedIds = getAllowedPlayerIdsForName(chosen, { gameId: allowedGameId, playerId: allowedPlayerId });
-      const d = await api('GET', '/games');
-      const games = Array.isArray(d.games) ? d.games : [];
-      const conflict = games.find(g => g && g.status !== 'finished' && (g.name || '').startsWith('[Briscola]') && (g.players || []).some(p => !isWaitingPlayer(p.name) && normPlayerName(p.name) === normPlayerName(chosen) && !allowedIds.has(p.id)));
-      if (conflict) throw new Error(`Il nome "${chosen}" è già in uso. Scegline un altro.`);
       return chosen;
     }
     async function commitDisplayNameFromInput(inputId, { checkAvailability = false, availability = null } = {}) {
@@ -1513,7 +1546,7 @@
       const candidate = waiting.find(g => g.id !== game.id);
       if (!candidate) return false;
       if (compareQueuePriority(candidate, game) >= 0) return false;
-      try { await api('PUT', `/games/${candidate.id}`, { name: `[Briscola][Queue] ${candidate.players?.[0]?.name || '???'} vs ${myName}` }); } catch (_) { }
+      try { await api('PUT', `/games/${candidate.id}`, { name: `[Briscola][Queue] ${sanitizeDisplayName(candidate.players?.[0]?.name || '???')} vs ${myName}` }); } catch (_) { }
       queueGameId = persistQueueGameId(candidate.id);
       const s = await resolveSessionFromPlayers(candidate.id);
       await markJoinedIfNeeded(candidate.id, s.meId);
@@ -1583,7 +1616,7 @@
         const candidate = waiting.find(g => g.id !== storedQueueId);
         if (candidate) {
           queueGameId = persistQueueGameId(candidate.id);
-          try { await api('PUT', `/games/${candidate.id}`, { name: `[Briscola][Queue] ${candidate.players?.[0]?.name || '???'} vs ${name}` }); } catch (_) { }
+          try { await api('PUT', `/games/${candidate.id}`, { name: `[Briscola][Queue] ${sanitizeDisplayName(candidate.players?.[0]?.name || '???')} vs ${name}` }); } catch (_) { }
           const s = await resolveSessionFromPlayers(candidate.id);
           await markJoinedIfNeeded(candidate.id, s.meId);
           stopQueueMatch(); toast('Avversario trovato!', 'ok');
@@ -1591,7 +1624,7 @@
         }
         const gd = await api('POST', '/games', { name: `[Briscola][Queue] ${name} vs ???` });
         const gid = gd.game.id;
-        const r1 = await api('POST', `/games/${gid}/players`, { name });
+        const r1 = await api('POST', `/games/${gid}/players`, { name: getMyIdentityName() });
         const r2 = await api('POST', `/games/${gid}/players`, { name: 'In attesa…' });
         const st = initState(r1.player.id, r2.player.id);
         await api('POST', `/games/${gid}/moves`, { playerId: r1.player.id, data: { type: 'init', description: 'Partita casuale in coda', state: st } });
@@ -1606,7 +1639,7 @@
         const name = await commitDisplayNameFromInput('inp-display-name', { checkAvailability: true });
         const gd = await api('POST', '/games', { name: `[Briscola][Private] ${name} vs ???` });
         const gid = gd.game.id;
-        const r1 = await api('POST', `/games/${gid}/players`, { name });
+        const r1 = await api('POST', `/games/${gid}/players`, { name: getMyIdentityName() });
         const r2 = await api('POST', `/games/${gid}/players`, { name: 'In attesa…' });
         const st = initState(r1.player.id, r2.player.id);
         await api('POST', `/games/${gid}/moves`, { playerId: r1.player.id, data: { type: 'init', description: 'Partita privata creata', state: st } });
@@ -1622,7 +1655,7 @@
 
     function copyInvite() { const inp = document.getElementById('invite-link'); navigator.clipboard.writeText(inp.value).then(() => toast('Link copiato! ✅', 'ok')).catch(() => { inp.select(); document.execCommand('copy'); toast('Link copiato!', 'ok'); }); }
     async function enterAsP1() { if (!pendingInvite) { toast('Prima crea una partita', 'err'); return; } const { gameId: gid, p1id, p2id } = pendingInvite; await startGameSession(gid, p1id, p2id, 'p1'); }
-    function normPlayerName(n) { return (n || '').trim().toLowerCase(); }
+    function normPlayerName(n) { return sanitizeDisplayName(n).toLowerCase(); }
     function isWaitingPlayer(n) { return normPlayerName(n).startsWith('in attesa'); }
     function isQueueJoinable(g) { if (!g || g.status === 'finished') return false; if (!(g.name || '').startsWith('[Briscola][Queue]')) return false; const p = g.players || []; if (p.length < 2) return false; if (!p.some(x => isWaitingPlayer(x.name))) return false; return (g.moves?.length || 0) <= 1; }
     function parseGameNameSides(name) {
@@ -1651,13 +1684,12 @@
     }
 
     async function identifyPlayerForGame(gid, knownPlayers = null) {
-      const chosen = (myName || '').trim(); if (!chosen) throw new Error('Inserisci il nome');
+      const chosenIdentity = getMyIdentityName(); if (!chosenIdentity) throw new Error('Inserisci il nome');
       const players = Array.isArray(knownPlayers) ? [...knownPlayers] : [...((await api('GET', `/games/${gid}/players`)).players || [])];
-      const exact = players.filter(p => normPlayerName(p.name) === normPlayerName(chosen));
-      if (exact.length > 1) throw new Error('Nome duplicato rilevato in questa partita.');
+      const exact = players.filter(p => normPlayerIdentityName(p.name) === normPlayerIdentityName(chosenIdentity));
       let me = exact[0] || null;
       if (!me) me = players.find(p => isWaitingPlayer(p.name));
-      if (!me && players.length < 2) { const c = await api('POST', `/games/${gid}/players`, { name: chosen }); me = c.player; players.push(me); }
+      if (!me && players.length < 2) { const c = await api('POST', `/games/${gid}/players`, { name: chosenIdentity }); me = c.player; players.push(me); }
       if (!me) throw new Error('Impossibile identificarti');
       return { me, opp: players.find(p => p.id !== me.id) || null };
     }
@@ -1750,7 +1782,7 @@
           div.className = 'game-card d-flex justify-content-between align-items-center gap-2 flex-wrap p-3 mb-2';
           const badge = g.status === 'active' ? `<span class="badge text-bg-success">In corso</span>` : `<span class="badge text-bg-secondary">Finita</span>`;
           const resumeBtn = (g.name || '').startsWith('[Briscola]') && (g.players || []).length >= 2 ? `<button class="btn btn-success btn-sm" onclick="resumeGame('${g.id}')"><i class="bi bi-play-fill"></i> Riprendi</button>` : '';
-          div.innerHTML = `<div><div class="game-title">${esc(g.name || 'Partita')}</div><div class="game-meta">ID: ${g.id.slice(0, 10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${(g.players || []).length} | 🃏 ${(g.moves || []).length} mosse</div></div><div class="d-flex gap-2 align-items-center">${badge}${resumeBtn}</div>`;
+          div.innerHTML = `<div><div class="game-title">${esc(stripPlayerNameTagsFromText(g.name || 'Partita'))}</div><div class="game-meta">ID: ${g.id.slice(0, 10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${(g.players || []).length} | 🃏 ${(g.moves || []).length} mosse</div></div><div class="d-flex gap-2 align-items-center">${badge}${resumeBtn}</div>`;
           el.appendChild(div);
         }
       } catch (e) { el.innerHTML = `<span class="text-danger">${esc(e.message)}</span>`; }
@@ -2081,7 +2113,7 @@
         await assertDisplayNameAvailable(myName);
         const gd = await api('POST', '/games', { name: `[Briscola][Private] ${myName} vs ???` });
         const gid = gd.game.id;
-        const r1 = await api('POST', `/games/${gid}/players`, { name: myName });
+        const r1 = await api('POST', `/games/${gid}/players`, { name: getMyIdentityName() });
         const r2 = await api('POST', `/games/${gid}/players`, { name: 'In attesa…' });
         const st = initState(r1.player.id, r2.player.id);
         await api('POST', `/games/${gid}/moves`, { playerId: r1.player.id, data: { type: 'init', description: 'Rivincita!', state: st } });
