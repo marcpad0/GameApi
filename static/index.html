@@ -1644,6 +1644,7 @@
     }
 
     function copyInvite() { const inp = document.getElementById('invite-link'); navigator.clipboard.writeText(inp.value).then(() => toast('Link copiato! ✅', 'ok')).catch(() => { inp.select(); document.execCommand('copy'); toast('Link copiato!', 'ok'); }); }
+    function copyMatchId() { if (!gameId) return; navigator.clipboard.writeText(gameId).then(() => toast('ID Partita copiato! ✅', 'ok')).catch(() => { const dummy = document.createElement('textarea'); document.body.appendChild(dummy); dummy.value = gameId; dummy.select(); document.execCommand('copy'); document.body.removeChild(dummy); toast('ID Partita copiato! ✅', 'ok'); }); }
     async function enterAsP1() { if (!pendingInvite) { toast('Prima crea una partita', 'err'); return; } const { gameId: gid, p1id, p2id } = pendingInvite; await startGameSession(gid, p1id, p2id, 'p1'); }
     function normPlayerName(n) { return sanitizeDisplayName(n).toLowerCase(); }
     function isWaitingPlayer(n) { return normPlayerName(n).startsWith('in attesa'); }
@@ -1800,7 +1801,7 @@
     async function startGameSession(gid, myPidVal, oppPidVal, role) {
       rememberPlayerSession(gid, myPidVal, role, myName);
       gameId = gid; myPid = myPidVal; oppPid = oppPidVal; myRole = role; posting = false; botThinking = false; lastSeenByPlayer = {};
-      document.getElementById('hdr-game').textContent = `Partita: ${gid.slice(0, 10)}…`;
+      document.getElementById('hdr-game').innerHTML = `Partita: <span style="cursor:pointer;" onclick="copyMatchId()" title="Copia ID Partita">${gid.slice(0, 10)}… <i class="bi bi-clipboard"></i></span>`;
       const ok = await waitForInitialGameState(); if (!ok) return false;
       if (enforceCurrentPlayerLockout()) return false;
       resetOpponentInactivityCountdown(); pageWasHidden = false;
