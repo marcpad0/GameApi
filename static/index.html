@@ -1137,16 +1137,22 @@
     const PLAYER_NAME_TAG_LEN = 16;
     const PLAYER_NAME_TAG_RE = new RegExp(`${PLAYER_NAME_TAG_SEPARATOR}([A-Za-z0-9]{${PLAYER_NAME_TAG_LEN}})$`);
 
+    /** Sanitizes a player display name before it is stored or shown. */
     function sanitizeDisplayName(name) { return stripPlayerNameTag(String(name || '')).replace(/\s+/g, ' ').trim().slice(0, 30); }
+    /** Removes the generated identity tag from a player name. */
     function stripPlayerNameTag(name) { return String(name || '').replace(PLAYER_NAME_TAG_RE, ''); }
+    /** Strips tagged player identities from arbitrary text. */
     function stripPlayerNameTagsFromText(text) { return String(text || '').replace(new RegExp(`${PLAYER_NAME_TAG_SEPARATOR}[A-Za-z0-9]{${PLAYER_NAME_TAG_LEN}}\\b`, 'g'), ''); }
+    /** Extracts the generated identity tag from a player name. */
     function extractPlayerNameTag(name) { const m = String(name || '').trim().match(PLAYER_NAME_TAG_RE); return m ? m[1] : ''; }
+    /** Generates a random identity tag for a player name. */
     function makePlayerNameTag() {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       let out = '';
       for (let i = 0; i < PLAYER_NAME_TAG_LEN; i++) out += chars[(Math.random() * chars.length) | 0];
       return out;
     }
+    /** Builds the persisted identity name used to distinguish players. */
     function makePlayerIdentityName(displayName, preferredTag = '') {
       const base = sanitizeDisplayName(displayName);
       if (!base) return '';
@@ -1154,6 +1160,7 @@
       const tag = tagRe.test(preferredTag) ? preferredTag : makePlayerNameTag();
       return `${base}${PLAYER_NAME_TAG_SEPARATOR}${tag}`;
     }
+    /** Loads the saved identity name from local storage. */
     function getStoredIdentityName() {
       const raw = String(localStorage.getItem(PLAYER_NAME_IDENTITY_STORAGE_KEY) || '').trim();
       if (!raw) return '';
@@ -1161,20 +1168,27 @@
       if (!base) return '';
       return makePlayerIdentityName(base, extractPlayerNameTag(raw));
     }
+    /** Returns the current player identity name. */
     function getMyIdentityName() {
       if (!myIdentityName) myIdentityName = makePlayerIdentityName(myName);
       return myIdentityName;
     }
+    /** Normalizes an identity name for comparisons. */
     function normPlayerIdentityName(n) { return String(n || '').trim().toLowerCase(); }
+    /** Persists the selected card theme and falls back to the default when needed. */
     function persistCardTheme(t) { const s = CARD_THEMES[t] ? t : DEFAULT_CARD_THEME; localStorage.setItem(CARD_THEME_STORAGE_KEY, s); return s; }
+    /** Loads the saved display name from local storage. */
     function getStoredDisplayName() { return sanitizeDisplayName(localStorage.getItem(PLAYER_NAME_STORAGE_KEY) || ''); }
+    /** Loads cached per-game player session data from local storage. */
     function loadPlayerSessions() {
       try {
         const raw = JSON.parse(localStorage.getItem(PLAYER_SESSION_STORAGE_KEY) || '{}');
         return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
       } catch (_) { return {}; }
     }
+    /** Saves cached per-game player session data. */
     function savePlayerSessions(store) { localStorage.setItem(PLAYER_SESSION_STORAGE_KEY, JSON.stringify(store || {})); }
+    /** Returns the cached session details for a game. */
     function getSavedPlayerSession(gid) {
       if (!gid) return null;
       const entry = loadPlayerSessions()[gid];
@@ -1183,12 +1197,14 @@
       if (!playerId) return null;
       return { playerId, role: entry.role || null, name: sanitizeDisplayName(entry.name || '') };
     }
+    /** Stores the current player session details for a game. */
     function rememberPlayerSession(gid, playerId, role, name = myName) {
       if (!gid || !playerId) return;
       const store = loadPlayerSessions();
       store[gid] = { playerId, role: role || null, name: sanitizeDisplayName(name || myName), updatedAt: new Date().toISOString() };
       savePlayerSessions(store);
     }
+    /** Collects player ids allowed to reuse the chosen display name. */
     function getAllowedPlayerIdsForName(name, { gameId: allowedGameId = null, playerId: allowedPlayerId = null } = {}) {
       const chosen = normPlayerName(name);
       const ids = new Set();
@@ -1201,18 +1217,22 @@
       if (gameId && myPid && normPlayerName(myName) === chosen) ids.add(myPid);
       return ids;
     }
+    /** Loads the queued matchmaking game id from local storage. */
     function getStoredQueueGameId() { const gid = String(localStorage.getItem(QUEUE_GAME_STORAGE_KEY) || '').trim(); return gid || null; }
+    /** Stores or clears the queued matchmaking game id. */
     function persistQueueGameId(gid) {
       const next = String(gid || '').trim();
       if (next) localStorage.setItem(QUEUE_GAME_STORAGE_KEY, next);
       else localStorage.removeItem(QUEUE_GAME_STORAGE_KEY);
       return next || null;
     }
+    /** Builds the current context used for display-name validation. */
     function getCurrentNameAvailabilityContext(fallbackGameId = null) {
       const activeGameId = fallbackGameId || gameId || queueGameId || getStoredQueueGameId() || null;
       const saved = getSavedPlayerSession(activeGameId);
       return { gameId: activeGameId, playerId: myPid || saved?.playerId || null };
     }
+    /** Persists the current display name and updates related UI. */
     function persistDisplayName(name) {
       const s = sanitizeDisplayName(name); if (!s) return false;
       const prevTag = extractPlayerNameTag(myIdentityName || getStoredIdentityName());
@@ -1226,18 +1246,27 @@
       return true;
     }
 
+    /** Builds and shuffles a full Briscola deck. */
     function buildDeck() { const d = []; for (const s of SUITS) for (const r of RANKS) d.push({ suit: s, rank: r }); return shuffle(d); }
+    /** Shuffles an array in place. */
     function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = 0 | Math.random() * (i + 1);[a[i], a[j]] = [a[j], a[i]]; } return a; }
+    /** Returns the point value of a card. */
     function cardPts(c) { return POINTS[c.rank] || 0; }
+    /** Builds the short UI label for a card. */
     function lbl(c) { return `${RANK_LABEL[c.rank]}${SUIT_ICON[c.suit]}`; }
+    /** Returns a promise that resolves after the requested delay. */
     function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+    /** Parses a timestamp string into milliseconds. */
     function tsMs(v) { const m = Date.parse(v || ''); return Number.isFinite(m) ? m : NaN; }
 
+    /** Determines which card wins the current trick. */
     function trickWinner(c1, c2, lead, bSuit) {
+      /** Scores a card for trick comparison. */
       function sc(c) { return c.suit === bSuit ? 100 + POWER[c.rank] : c.suit === lead ? POWER[c.rank] : -1; }
       return sc(c2) > sc(c1) ? 1 : 0;
     }
 
+    /** Collects the latest activity timestamp for each player. */
     function collectLastSeenByPlayer(moves) {
       const seen = {};
       for (const m of (Array.isArray(moves) ? moves : [])) {
@@ -1248,17 +1277,23 @@
       return seen;
     }
 
+    /** Returns the lockout map from the current game state. */
     function getLockedOutPlayers(state = gs) { const l = state?.lockedOutPlayers; return (!l || typeof l !== 'object' || Array.isArray(l)) ? {} : l; }
+    /** Checks whether a player has been locked out of the match. */
     function isLockedOutPlayer(pid, state = gs) { return !!(pid && getLockedOutPlayers(state)[pid]); }
+    /** Checks whether a player id is currently controlled by the bot. */
     function isBotPlayer(pid, state = gs) { return !!(pid && state?.bot?.enabled && state?.bot?.replacedPid === pid); }
+    /** Checks whether the opponent slot is currently bot-controlled. */
     function isOpponentBotActive(state = gs) { return isBotPlayer(oppPid, state); }
 
+    /** Chooses the bot next card based on the current trick. */
     function pickBotCard(hand, trick, briscolaSuit) {
       const cards = Array.isArray(hand) ? [...hand] : [];
       if (!cards.length) return null;
       const cost = c => (POINTS[c.rank] || 0) * 100 + (POWER[c.rank] || 0);
       const leadCard = trick?.[0]?.card || null;
       if (!leadCard) { cards.sort((a, b) => cost(a) - cost(b)); return cards[0]; }
+      /** Checks whether a candidate card can beat the lead card. */
       const canBeat = (card) => {
         if (leadCard.suit === briscolaSuit) return card.suit === briscolaSuit && POWER[card.rank] > POWER[leadCard.rank];
         if (card.suit === briscolaSuit) return true;
@@ -1270,6 +1305,7 @@
       return pool[0];
     }
 
+    /** Creates the initial game state for a new match. */
     function initState(p1, p2) {
       const deck = buildDeck();
       return { v: 1, deck, hands: { [p1]: deck.splice(0, 3), [p2]: deck.splice(0, 3) }, briscola: deck[deck.length - 1], trick: [], scores: { [p1]: 0, [p2]: 0 }, captured: { [p1]: [], [p2]: [] }, current: p1, lead: null, phase: 'playing', winner: null, round: 0, lockedOutPlayers: {}, bot: { enabled: false, replacedPid: null, controllerPid: null, activatedAt: null } };
@@ -1279,7 +1315,9 @@
        SUONI
     ════════════════════════════════════════ */
     let soundEnabled = true, audioCtx = null;
+    /** Lazily creates the shared Web Audio context. */
     function getAudioCtx() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+    /** Plays a short tone used by the game sound effects. */
     function playTone(freq, type, duration, vol = 0.3, delay = 0) {
       if (!soundEnabled) return;
       try {
@@ -1291,12 +1329,19 @@
         osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + duration);
       } catch (_) { }
     }
+    /** Plays the sound used when a card is played. */
     function soundCard() { playTone(220, 'triangle', 0.08, 0.4); playTone(180, 'sine', 0.12, 0.2, 0.05); }
+    /** Plays the sound used when the player wins a trick. */
     function soundTrickWin() { playTone(523, 'sine', 0.15, 0.3); playTone(659, 'sine', 0.15, 0.25, 0.08); playTone(784, 'sine', 0.2, 0.3, 0.16); }
+    /** Plays the sound used when the player loses a trick. */
     function soundTrickLoss() { playTone(330, 'sine', 0.12, 0.2); playTone(262, 'sine', 0.15, 0.2, 0.1); }
+    /** Plays the victory fanfare. */
     function soundVictory() { [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'square', 0.18, 0.25, i * 0.12)); }
+    /** Plays the defeat sound. */
     function soundDefeat() { playTone(392, 'sine', 0.2, 0.25); playTone(349, 'sine', 0.2, 0.22, 0.18); playTone(294, 'sine', 0.3, 0.25, 0.36); }
+    /** Plays the alert used for the player turn. */
     function soundMyTurn() { playTone(880, 'sine', 0.1, 0.2); }
+    /** Toggles game audio feedback on or off. */
     function toggleSound() {
       soundEnabled = !soundEnabled;
       const btn = document.getElementById('sound-toggle');
@@ -1307,17 +1352,22 @@
     /* ════════════════════════════════════════
        STORICO
     ════════════════════════════════════════ */
+    /** Loads the local match history. */
     function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (_) { return []; } }
+    /** Saves the local match history. */
     function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 50))); }
+    /** Adds a completed match to local history and refreshes the UI. */
     function addToHistory(result, myScore, oppScore, oppName, rounds) {
       const h = loadHistory();
       h.unshift({ result, myScore, oppScore, oppName: oppName || 'Avversario', rounds, date: new Date().toISOString() });
       saveHistory(h); renderHistory();
     }
+    /** Clears the stored match history after confirmation. */
     function clearHistory() {
       if (!confirm('Cancellare lo storico?')) return;
       localStorage.removeItem(HISTORY_KEY); renderHistory(); toast('Storico cancellato', 'info');
     }
+    /** Renders the match history summary and recent entries. */
     function renderHistory() {
       const h = loadHistory();
       const sEl = document.getElementById('history-summary'); const lEl = document.getElementById('history-list');
@@ -1363,6 +1413,7 @@
     /* ════════════════════════════════════════
        API
     ════════════════════════════════════════ */
+    /** Performs an authenticated JSON request against the game API. */
     async function api(method, path, body, key) {
       const k = key || apiKey;
       const opts = { method, headers: { 'Content-Type': 'application/json', 'X-API-Key': k } };
@@ -1377,12 +1428,15 @@
        TOAST / ESC
     ════════════════════════════════════════ */
     let _tt;
+    /** Shows a transient toast message. */
     function toast(msg, type = 'info') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `show ${type}`; clearTimeout(_tt); _tt = setTimeout(() => t.className = '', 3400); }
+    /** Escapes text for safe HTML output. */
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     /* ════════════════════════════════════════
        SCREENS
     ════════════════════════════════════════ */
+    /** Activates the requested screen and updates related timers. */
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-' + id).classList.add('active');
@@ -1391,13 +1445,17 @@
       if (id === 'lobby') renderHistory();
       startGhostCleanupWatcher();
     }
+    /** Returns the asset directory for the selected card theme. */
     function getCardDir(t = cardTheme) { return (CARD_THEMES[t] || CARD_THEMES[DEFAULT_CARD_THEME]).dir; }
+    /** Returns the fallback asset directory for card images. */
     function getFallbackCardDir(t = cardTheme) { return getCardDir(t === 'napoletane' ? 'bergamasche' : 'napoletane'); }
+    /** Preloads settings values and opens the settings screen. */
     function openSettings() {
       const s = document.getElementById('sel-card-theme'); if (s) s.value = cardTheme;
       const n = document.getElementById('inp-settings-name'); if (n) n.value = myName;
       showScreen('settings');
     }
+    /** Validates and saves the current settings. */
     async function saveSettings() {
       const s = document.getElementById('sel-card-theme');
       const next = s?.value || DEFAULT_CARD_THEME;
@@ -1413,16 +1471,19 @@
     /* ════════════════════════════════════════
        AUTH / INIT
     ════════════════════════════════════════ */
+    /** Checks whether a display name is reserved or invalid. */
     function isReservedPlayerName(name) {
       const chosen = normPlayerName(name);
       return !chosen || chosen === '???' || isWaitingPlayer(name);
     }
+    /** Validates the chosen display name. */
     async function assertDisplayNameAvailable(name, { gameId: allowedGameId = null, playerId: allowedPlayerId = null } = {}) {
       const chosen = sanitizeDisplayName(name);
       if (!chosen) throw new Error('Inserisci un nome valido');
       if (isReservedPlayerName(chosen)) throw new Error('Questo nome non è disponibile');
       return chosen;
     }
+    /** Reads, validates, and persists a display name from an input. */
     async function commitDisplayNameFromInput(inputId, { checkAvailability = false, availability = null } = {}) {
       const input = inputId ? document.getElementById(inputId) : null;
       let chosen = sanitizeDisplayName(input?.value || myName);
@@ -1431,27 +1492,36 @@
       persistDisplayName(chosen);
       return chosen;
     }
+    /** Saves the display name from the lobby form. */
     async function saveLobbyDisplayName() {
       try {
         const chosen = await commitDisplayNameFromInput('inp-display-name', { checkAvailability: true, availability: getCurrentNameAvailabilityContext() });
         toast(`Nome salvato: ${chosen}`, 'ok');
       } catch (e) { toast(e.message || 'Nome non valido', 'err'); }
     }
+    /** Persists the current lobby display name without extra validation. */
     function saveDisplayName() {
       const inp = document.getElementById('inp-display-name'); if (!inp) return;
       persistDisplayName(inp.value);
     }
+    /** Switches the client to the built-in API key. */
     function useInternalAuth() { apiKey = INTERNAL_API_KEY; }
+    /** Encodes invite details into a compact shareable token. */
     function makeInviteToken(d) { const p = JSON.stringify({ join: d.join || '', p1id: d.p1id || '', p2id: d.p2id || '', as: d.as || 'p2' }); return btoa(p).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+    /** Decodes an invite token back into invite details. */
     function readInviteToken(token) { try { const n = (token || '').replace(/-/g, '+').replace(/_/g, '/'); const pad = (4 - (n.length % 4)) % 4; const p = JSON.parse(atob(n + '='.repeat(pad))); if (!p?.join) return null; return { join: p.join, p1id: p.p1id || '', p2id: p.p2id || '', as: p.as || 'p2' }; } catch (_) { return null; } }
+    /** Parses invite information from the current URL. */
     function parseInvite() { const p = new URLSearchParams(location.search); const t = p.get('invite') || ''; if (t) { const d = readInviteToken(t); if (d) return d; } const j = p.get('join') || ''; if (!j) return null; return { join: j, p1id: p.get('p1id') || '', p2id: p.get('p2id') || '', as: p.get('as') || 'p2' }; }
+    /** Ensures invite-based sessions use the internal API key. */
     function syncApiKeyFromInvite() { useInternalAuth(); return apiKey; }
+    /** Validates the player name before joining via invite. */
     async function doLoginWithInvite() {
       try {
         await commitDisplayNameFromInput('inp-display-name', { checkAvailability: true, availability: getCurrentNameAvailabilityContext() });
         syncApiKeyFromInvite(); afterLogin();
       } catch (e) { toast(e.message || 'Nome non valido', 'err'); }
     }
+    /** Routes the player to the correct post-login flow. */
     function afterLogin() {
       document.getElementById('hdr-user').textContent = `👤 ${myName}`;
       const inv = parseInvite();
@@ -1459,6 +1529,7 @@
       else { showScreen('lobby'); loadGames(); }
     }
 
+    /** Bootstraps the client once the page has loaded. */
     window.addEventListener('load', () => {
       initChat(); useInternalAuth();
       const inv = parseInvite(); syncApiKeyFromInvite();
@@ -1472,19 +1543,24 @@
       showScreen('lobby'); loadGames(); renderHistory();
     });
 
+    /** Normalizes optional fields on the live game state. */
     function ensureRuntimeStateShape() {
       if (!gs || typeof gs !== 'object') return;
       if (!gs.lockedOutPlayers || typeof gs.lockedOutPlayers !== 'object' || Array.isArray(gs.lockedOutPlayers)) gs.lockedOutPlayers = {};
       if (!gs.bot || typeof gs.bot !== 'object' || Array.isArray(gs.bot)) gs.bot = { enabled: false, replacedPid: null, controllerPid: null, activatedAt: null };
     }
+    /** Sends locked-out players back to the lobby. */
     function enforceCurrentPlayerLockout() {
       if (!isLockedOutPlayer(myPid)) return false;
       toast('Sei rimasto assente: non puoi rientrare in questa partita.', 'err');
       goLobby(); return true;
     }
+    /** Resets the inactivity timer used for bot takeover. */
     function resetOpponentInactivityCountdown() { opponentInactivityResetAtMs = Date.now(); }
+    /** Checks whether the game screen is currently visible. */
     function isGameScreenActive() { const s = document.getElementById('screen-game'); return !!s && s.classList.contains('active'); }
 
+    /** Resynchronizes game state after the page becomes visible again. */
     async function resyncGameAfterVisibilityRestore() {
       if (posting || botThinking || playPrecheckInFlight) return;
       if (!isGameScreenActive() || !gameId || !gs) return;
@@ -1495,20 +1571,24 @@
       renderBoard(); startPoll(); await maybeBotPlayTurn();
     }
 
+    /** Pauses timers when the page is hidden and resynchronizes when it returns. */
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { pageWasHidden = true; stopPoll(); stopPresenceHeartbeat(); return; }
       if (pageWasHidden) { resetOpponentInactivityCountdown(); pageWasHidden = false; }
       runGhostCleanupWatcherTick(); resyncGameAfterVisibilityRestore();
     });
+    /** Resynchronizes the client after the window regains focus. */
     window.addEventListener('focus', () => {
       if (pageWasHidden && !document.hidden) { resetOpponentInactivityCountdown(); pageWasHidden = false; }
       runGhostCleanupWatcherTick(); resyncGameAfterVisibilityRestore();
     });
+    /** Stops active timers before the page unloads. */
     window.addEventListener('beforeunload', () => { stopPoll(); stopPresenceHeartbeat(); stopGhostCleanupWatcher(); });
 
     /* ════════════════════════════════════════
        MATCHMAKING
     ════════════════════════════════════════ */
+    /** Updates the matchmaking queue banner and related buttons. */
     function setQueueUI(active, message) {
       const box = document.getElementById('queue-box'); const msg = document.getElementById('queue-msg');
       if (box) box.style.display = active ? 'block' : 'none';
@@ -1516,6 +1596,7 @@
       const bq = document.getElementById('btn-queue'); const bp = document.getElementById('btn-private');
       if (bq) bq.disabled = active; if (bp) bp.disabled = active;
     }
+    /** Compares queue rooms so older candidates are matched first. */
     function compareQueuePriority(a, b) {
       const ams = Date.parse(a?.createdAt || ''); const bms = Date.parse(b?.createdAt || '');
       if (Number.isFinite(ams) && Number.isFinite(bms) && ams !== bms) return ams - bms;
@@ -1523,12 +1604,14 @@
       if (!Number.isFinite(ams) && Number.isFinite(bms)) return 1;
       return String(a?.id || '').localeCompare(String(b?.id || ''));
     }
+    /** Stops queue polling and optionally clears the stored queue id. */
     function stopQueueMatch(reset = true) {
       clearInterval(queueTimer); queueTimer = null; queueChecking = false;
       if (reset) queueGameId = persistQueueGameId(null);
       else persistQueueGameId(queueGameId);
       setQueueUI(false);
     }
+    /** Switches the player to an older waiting queue room when possible. */
     async function maybeSwitchToOlderQueue(game) {
       if (!game || !isQueueJoinable(game)) return false;
       const all = await api('GET', '/games');
@@ -1545,6 +1628,7 @@
       await openMatchedQueueGame(candidate.id, s.meId, s.oppId, s.role);
       return true;
     }
+    /** Opens a matched queue game or keeps waiting if it is not ready. */
     async function openMatchedQueueGame(gid, meId, oppId, role) {
       const opened = await startGameSession(gid, meId, oppId, role);
       if (opened) return true;
@@ -1554,6 +1638,7 @@
       return false;
     }
 
+    /** Polls the active queue room for a successful match. */
     async function checkQueueMatch() {
       if (!queueGameId || queueChecking) return; queueChecking = true;
       try {
@@ -1571,14 +1656,17 @@
       } catch (e) { stopQueueMatch(); toast(e.message || 'Errore coda', 'err'); }
       finally { if (queueTimer) queueChecking = false; }
     }
+    /** Starts polling the matchmaking queue. */
     function startQueueWatcher() { clearInterval(queueTimer); queueTimer = setInterval(checkQueueMatch, 2500); }
 
+    /** Leaves the active matchmaking queue. */
     async function cancelQueue() {
       const gid = queueGameId; stopQueueMatch();
       if (gid) { try { const gd = await api('GET', `/games/${gid}`); if ((gd.game?.players || []).some(p => isWaitingPlayer(p.name))) await api('PUT', `/games/${gid}`, { status: 'finished' }); } catch (_) { } }
       toast('Uscito dalla coda.', 'info');
     }
 
+    /** Creates or joins a random matchmaking room. */
     async function queueRandomMatch() {
       if (queueTimer) { toast('Sei già in coda.', 'info'); return; }
       document.getElementById('invite-box').style.display = 'none';
@@ -1623,6 +1711,7 @@
       } catch (e) { stopQueueMatch(); toast(e.message, 'err'); }
     }
 
+    /** Creates a private match and prepares an invite link. */
     async function createPrivateGame() {
       stopQueueMatch();
       try {
@@ -1643,16 +1732,24 @@
       } catch (e) { toast(e.message, 'err'); }
     }
 
+    /** Copies the current invite link to the clipboard. */
     function copyInvite() { const inp = document.getElementById('invite-link'); navigator.clipboard.writeText(inp.value).then(() => toast('Link copiato! ✅', 'ok')).catch(() => { inp.select(); document.execCommand('copy'); toast('Link copiato!', 'ok'); }); }
+    /** Copies the current match id to the clipboard. */
     function copyMatchId() { if (!gameId) return; navigator.clipboard.writeText(gameId).then(() => toast('ID Partita copiato! ✅', 'ok')).catch(() => { const dummy = document.createElement('textarea'); document.body.appendChild(dummy); dummy.value = gameId; dummy.select(); document.execCommand('copy'); document.body.removeChild(dummy); toast('ID Partita copiato! ✅', 'ok'); }); }
+    /** Opens the newly created private game as player one. */
     async function enterAsP1() { if (!pendingInvite) { toast('Prima crea una partita', 'err'); return; } const { gameId: gid, p1id, p2id } = pendingInvite; await startGameSession(gid, p1id, p2id, 'p1'); }
+    /** Normalizes a display name for comparisons. */
     function normPlayerName(n) { return sanitizeDisplayName(n).toLowerCase(); }
+    /** Checks whether a placeholder waiting-player name is being used. */
     function isWaitingPlayer(n) { return normPlayerName(n).startsWith('in attesa'); }
+    /** Checks whether a game can be joined as a waiting queue room. */
     function isQueueJoinable(g) { if (!g || g.status === 'finished') return false; if (!(g.name || '').startsWith('[Briscola][Queue]')) return false; const p = g.players || []; if (p.length < 2) return false; if (!p.some(x => isWaitingPlayer(x.name))) return false; return (g.moves?.length || 0) <= 1; }
+    /** Extracts both display names from a formatted game title. */
     function parseGameNameSides(name) {
       const match = /^\[Briscola\](?:\[(?:Queue|Private)\])?\s*(.*?)\s+vs\s+(.*)$/.exec(String(name || '').trim());
       return match ? { left: sanitizeDisplayName(match[1]), right: sanitizeDisplayName(match[2]) } : null;
     }
+    /** Finds the best display name to show for the opponent. */
     function resolveOpponentDisplayName(game, meId, opp) {
       const direct = sanitizeDisplayName(opp?.name || '');
       if (direct && !isWaitingPlayer(direct)) return direct;
@@ -1664,6 +1761,7 @@
       return guessed;
     }
 
+    /** Writes the join move when a second player enters a room. */
     async function markJoinedIfNeeded(gid, meId) {
       try {
         const md = await api('GET', `/games/${gid}/moves`);
@@ -1674,6 +1772,7 @@
       } catch (_) { }
     }
 
+    /** Finds or creates the current player slot in a game. */
     async function identifyPlayerForGame(gid, knownPlayers = null) {
       const chosenIdentity = getMyIdentityName(); if (!chosenIdentity) throw new Error('Inserisci il nome');
       const players = Array.isArray(knownPlayers) ? [...knownPlayers] : [...((await api('GET', `/games/${gid}/players`)).players || [])];
@@ -1685,6 +1784,7 @@
       return { me, opp: players.find(p => p.id !== me.id) || null };
     }
 
+    /** Resolves the current player ids and role for a game. */
     async function resolveSessionFromPlayers(gid) {
       const pd = await api('GET', `/games/${gid}/players`); const players = [...(pd.players || [])];
       const saved = getSavedPlayerSession(gid);
@@ -1702,6 +1802,7 @@
       return { meId: me.id, oppId: opp.id, role };
     }
 
+    /** Joins an invited match as the second player. */
     async function autoJoinAsP2(inv) {
       const gid = inv?.join; if (!gid) { toast('Link non valido', 'err'); showScreen('lobby'); return; }
       useInternalAuth();
@@ -1716,6 +1817,7 @@
       history.replaceState({}, '', location.pathname);
     }
 
+    /** Joins a match using the entered game id. */
     async function joinByGameId() {
       const gid = document.getElementById('inp-join-id').value.trim();
       if (!gid) { toast('Inserisci un Game ID', 'err'); return; }
@@ -1730,7 +1832,9 @@
     /* ════════════════════════════════════════
        GHOST ROOMS
     ════════════════════════════════════════ */
+    /** Returns the last known activity time for a game. */
     function gameLastActivityMs(g) { const ms = Date.parse(g?.updatedAt || g?.createdAt); return Number.isFinite(ms) ? ms : NaN; }
+    /** Checks whether an abandoned room should be cleaned up. */
     function isExpiredGhostRoom(g, now = Date.now()) {
       if (!g || g.status === 'finished') return false;
       if (!(g.name || '').startsWith('[Briscola]')) return false;
@@ -1738,6 +1842,7 @@
       if ((now - last) < GHOST_ROOM_TTL_MS) return false;
       return true;
     }
+    /** Deletes ghost rooms and returns the ids that were removed. */
     async function cleanupExpiredGhostRooms(games, silent = false) {
       const toDelete = (Array.isArray(games) ? games : []).filter(g => typeof g?.id === 'string' && isExpiredGhostRoom(g));
       if (!toDelete.length) return new Set();
@@ -1746,18 +1851,22 @@
       results.forEach((r, i) => { if (r.status === 'fulfilled') ids.add(toDelete[i].id); });
       return ids;
     }
+    /** Runs one cleanup pass for stale rooms. */
     async function runGhostCleanupWatcherTick() {
       if (ghostCleanupRunning) return; ghostCleanupRunning = true;
       try { const d = await api('GET', '/games'); await cleanupExpiredGhostRooms(d.games || [], true); }
       catch (_) { }
       finally { ghostCleanupRunning = false; }
     }
+    /** Starts the periodic ghost-room cleanup watcher. */
     function startGhostCleanupWatcher() { if (ghostCleanupTimer) return; ghostCleanupTimer = setInterval(runGhostCleanupWatcherTick, GHOST_CLEANUP_INTERVAL_MS); runGhostCleanupWatcherTick(); }
+    /** Stops the ghost-room cleanup watcher. */
     function stopGhostCleanupWatcher() { clearInterval(ghostCleanupTimer); ghostCleanupTimer = null; ghostCleanupRunning = false; }
 
     /* ════════════════════════════════════════
        LOAD GAMES
     ════════════════════════════════════════ */
+    /** Loads and renders the lobby game list. */
     async function loadGames(silent = false) {
       const el = document.getElementById('games-list'); if (!silent) el.innerHTML = '<span class="spinner-sm"></span>';
       try {
@@ -1778,6 +1887,7 @@
         }
       } catch (e) { el.innerHTML = `<span class="text-danger">${esc(e.message)}</span>`; }
     }
+    /** Resumes an existing game from the lobby list. */
     async function resumeGame(gid) {
       try {
         const saved = getSavedPlayerSession(gid);
@@ -1789,6 +1899,7 @@
     /* ════════════════════════════════════════
        START / SYNC
     ════════════════════════════════════════ */
+    /** Retries state sync until the first valid game state is available. */
     async function waitForInitialGameState(maxAttempts = 6) {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const ok = await syncState(true);
@@ -1798,6 +1909,7 @@
       toast('Impossibile entrare nella partita. Riprova tra un istante.', 'err');
       return false;
     }
+    /** Initializes local state and opens an active match. */
     async function startGameSession(gid, myPidVal, oppPidVal, role) {
       rememberPlayerSession(gid, myPidVal, role, myName);
       gameId = gid; myPid = myPidVal; oppPid = oppPidVal; myRole = role; posting = false; botThinking = false; lastSeenByPlayer = {};
@@ -1813,6 +1925,7 @@
       return true;
     }
 
+    /** Loads the latest persisted game state and refreshes side panels. */
     async function syncState(silent = false) {
       try {
         const md = await api('GET', `/games/${gameId}/moves`);
@@ -1833,6 +1946,7 @@
       }
     }
 
+    /** Updates the trump-suit indicator shown in the header. */
     function updateBriscolaIndicator() {
       const el = document.getElementById('briscola-indicator'); if (!el || !gs) return;
       el.innerHTML = `Briscola: ${RANK_LABEL[gs.briscola.rank]}${SUIT_ICON[gs.briscola.suit]}`;
@@ -1842,15 +1956,18 @@
     /* ════════════════════════════════════════
        POLLING
     ════════════════════════════════════════ */
+    /** Starts live polling while a match is open. */
     function startPoll() {
       stopPoll();
       const pi = document.getElementById('poll-ind'); if (pi) pi.classList.toggle('d-none', isMyTurn());
       pollTimer = setInterval(pollOnce, 1200);
     }
+    /** Stops live polling for the current match. */
     function stopPoll() {
       clearInterval(pollTimer); pollTimer = null;
       const pi = document.getElementById('poll-ind'); if (pi) pi.classList.add('d-none');
     }
+    /** Runs a single polling cycle for game updates. */
     async function pollOnce() {
       if (posting || botThinking || playLock) return;
       const prevCurrent = gs?.current, prevTrick = gs?.trick?.length, prevPhase = gs?.phase;
@@ -1866,11 +1983,13 @@
       }
       await maybeBotPlayTurn();
     }
+    /** Checks whether it is currently the local player turn. */
     function isMyTurn() { return gs && gs.current === myPid && gs.phase === 'playing'; }
 
     /* ════════════════════════════════════════
        BOT
     ════════════════════════════════════════ */
+    /** Hands the opponent slot to the bot after inactivity. */
     async function maybeActivateBotForInactiveOpponent() {
       if (!gs || gs.phase !== 'playing' || !myPid || !oppPid) return false;
       if (gs.current !== oppPid) return false;
@@ -1887,6 +2006,7 @@
       renderBoard(); toast('Avversario assente: ora giochi contro il BOT.', 'info');
       return true;
     }
+    /** Lets the bot play when it controls the current turn. */
     async function maybeBotPlayTurn() {
       if (!gs || gs.phase !== 'playing' || !isOpponentBotActive() || gs.current !== oppPid || posting || botThinking || playLock) return;
       botThinking = true;
@@ -1905,6 +2025,7 @@
     /* ════════════════════════════════════════
        PLAY CARD
     ════════════════════════════════════════ */
+    /** Applies and persists a card play for the given player. */
     async function playCardAs(actorPid, card) {
       if (posting || playLock || !gs || gs.phase !== 'playing' || !actorPid || !card || gs.current !== actorPid) return false;
       posting = true; playLock = true; stopPoll();
@@ -1950,6 +2071,7 @@
       }
     }
 
+    /** Validates the local move before delegating to the shared play handler. */
     async function playCard(card) {
       // Unified lock: block any overlapping clicks immediately
       if (posting || playLock || botThinking || playPrecheckInFlight) { return; }
@@ -1973,26 +2095,34 @@
       }
     }
 
+    /** Persists the current game state as a move for a specific player. */
     async function persistAs(pid, type, desc) { await api('POST', `/games/${gameId}/moves`, { playerId: pid, data: { type, description: desc, state: gs } }); }
+    /** Persists the current game state as a move for the local player. */
     async function persist(type, desc) { await persistAs(myPid, type, desc); }
 
     /* ════════════════════════════════════════
        PRESENCE HEARTBEAT
     ════════════════════════════════════════ */
+    /** Sends a presence heartbeat while the player is active in a match. */
     async function sendPresenceHeartbeat() {
       if (presenceInFlight || !gameId || !myPid || !gs || gs.phase !== 'playing') return;
       presenceInFlight = true;
       try { await api('POST', `/games/${gameId}/moves`, { playerId: myPid, data: { type: 'presence', description: 'heartbeat' } }); } catch (_) { }
       finally { presenceInFlight = false; }
     }
+    /** Starts periodic presence heartbeats. */
     function startPresenceHeartbeat() { stopPresenceHeartbeat(); sendPresenceHeartbeat(); presenceTimer = setInterval(sendPresenceHeartbeat, PRESENCE_HEARTBEAT_MS); }
+    /** Stops periodic presence heartbeats. */
     function stopPresenceHeartbeat() { clearInterval(presenceTimer); presenceTimer = null; presenceInFlight = false; }
+    /** Returns the other player id in the current match. */
     function otherOf(pid) { return pid === myPid ? oppPid : myPid; }
+    /** Returns the display label for a player id. */
     function pname(pid) { if (!pid) return 'Giocatore'; if (pid === myPid) return myName; if (isBotPlayer(pid)) return 'BOT'; return oppNameResolved || 'Avversario'; }
 
     /* ════════════════════════════════════════
        RENDER BOARD
     ════════════════════════════════════════ */
+    /** Renders the full game board from the current state. */
     function renderBoard() {
       if (!gs) return;
       const botActive = isOpponentBotActive();
@@ -2028,15 +2158,20 @@
       updateStatus();
     }
 
+    /** Renders a player visible hand. */
     function renderHand(id, cards, playable) {
       const el = document.getElementById(id); el.innerHTML = '';
       if (!cards.length) { el.innerHTML = '<em class="text-secondary" style="font-size:.8rem">—</em>'; return; }
       for (const c of cards) { const cd = mkCard(c, playable); if (playable) cd.addEventListener('click', () => playCard(c)); el.appendChild(cd); }
     }
+    /** Renders facedown placeholder cards for the opponent. */
     function renderHandBack(id, count) { const el = document.getElementById(id); el.innerHTML = ''; for (let i = 0; i < count; i++) el.appendChild(mkBack()); }
 
+    /** Maps card ranks to their image filename stems. */
     const RANK_FILE = { as: 'asso', '2': 'due', '3': 'tre', '4': 'quattro', '5': 'cinque', '6': 'sei', '7': 'sette', fante: 'fante', cavallo: 'cavallo', re: 're' };
+    /** Builds the image URL for a card asset. */
     function cardSrc(c, dir = getCardDir()) { return `/frontend/img/${dir}/${RANK_FILE[c.rank]}_${c.suit}.jpg`; }
+    /** Creates a rendered card tile element. */
     function mkCard(c, playable, played) {
       const d = document.createElement('div');
       d.className = `card-tile${playable ? ' playable' : ''}${played ? ' played' : ''}`;
@@ -2047,9 +2182,12 @@
       d.appendChild(img); d.title = `${RANK_LABEL[c.rank]} di ${c.suit} (${POINTS[c.rank] || 0} pt)`;
       return d;
     }
+    /** Creates a facedown card element. */
     function mkBack() { const d = document.createElement('div'); d.className = 'card-tile card-back'; return d; }
+    /** Creates an empty card placeholder element. */
     function mkPh() { const d = document.createElement('div'); d.className = 'card-ph'; return d; }
 
+    /** Updates the main status message for the match. */
     function updateStatus() {
       if (!gs) return;
       let msg = ''; const pi = document.getElementById('poll-ind');
@@ -2063,6 +2201,7 @@
     /* ════════════════════════════════════════
        MOVES LOG
     ════════════════════════════════════════ */
+    /** Renders the move history sidebar. */
     function renderMovesLog(moves) {
       const el = document.getElementById('moves-log'); el.innerHTML = '';
       const list = [...moves].filter(m => m?.data?.type !== 'presence' && m?.data?.type !== 'chat' && m?.data?.type !== 'chat_read').reverse().slice(0, 50);
@@ -2078,6 +2217,7 @@
     /* ════════════════════════════════════════
        WINNER + STATISTICHE
     ════════════════════════════════════════ */
+    /** Shows the winner overlay and end-of-match statistics. */
     function showWinner() {
       if (!gs) return;
       // Save finished game context for rematch coordination
@@ -2109,8 +2249,10 @@
     /* ════════════════════════════════════════
        REMATCH
     ════════════════════════════════════════ */
+    /** Stops polling for rematch coordination. */
     function stopRematchPoll() { clearInterval(rematchPollTimer); rematchPollTimer = null; }
 
+    /** Creates or joins a rematch after a finished game. */
     async function startRematch() {
       if (rematchInProgress) { toast('Rivincita già in corso…', 'info'); return; }
       rematchInProgress = true;
@@ -2176,6 +2318,7 @@
       finally { rematchInProgress = false; }
     }
 
+    /** Polls rematch rooms until the opponent joins or a conflict is resolved. */
     function startRematchPoll(newGid, oldGid, oldMyPid) {
       stopRematchPoll();
       let checks = 0;
@@ -2224,6 +2367,7 @@
       }, 2000);
     }
 
+    /** Joins an already-created rematch room. */
     async function joinRematchGame(rematchGid) {
       try {
         try { await api('PUT', `/games/${rematchGid}`, { name: `[Briscola][Rematch] ??? vs ${myName}` }); } catch (_) { }
@@ -2239,6 +2383,7 @@
     /* ════════════════════════════════════════
        ABANDON
     ════════════════════════════════════════ */
+    /** Abandons the current match and returns to the lobby. */
     async function abandonGame() {
       if (!confirm('Abbandonare la partita?')) return;
       if (!gameId) { goLobby(); return; }
@@ -2255,6 +2400,7 @@
     /* ════════════════════════════════════════
        LOBBY
     ════════════════════════════════════════ */
+    /** Resets runtime match state and returns to the lobby. */
     function goLobby() {
       stopPoll(); stopQueueMatch(); stopPresenceHeartbeat(); stopChatRefresh(); stopRematchPoll();
       botThinking = false; lastSeenByPlayer = {}; opponentInactivityResetAtMs = 0; pageWasHidden = false;
@@ -2275,6 +2421,7 @@
     /* ════════════════════════════════════════
        SIDEBAR TABS
     ════════════════════════════════════════ */
+    /** Switches between the log and chat side panels. */
     function switchSideTab(tab) {
       activeSideTab = tab;
       document.getElementById('tab-log').classList.toggle('active', tab === 'log');
@@ -2293,19 +2440,25 @@
     /* ════════════════════════════════════════
        CHAT — FILTRO PAROLACCE
     ════════════════════════════════════════ */
-    const BAD_WORDS = ['cazzo', 'stronzo', 'vaffanculo', 'merda', 'troia', 'puttana', 'idiota', 'stupido', 'imbecille', 'bastardo', 'coglione', 'fanculo', 'porco', 'vaffa'];
+    /** Lists the blocked words masked before chat messages are submitted. */
+    const BAD_WORDS = ['cazzo', 'stronzo', 'vaffanculo', 'merda', 'troia', 'puttana', 'idiota', 'stupido', 'imbecille', 'bastardo', 'coglione', 'fanculo', 'porco', 'vaffa', 'culattone', 'ricchione', 'frocio', 'finocchio', 'pederasta', 'lesbica', 'culona', 'zoccola', 'mignotta', 'baldracca', 'negro'];
+    /** Masks blocked words before a chat message is sent. */
     function cleanMessage(text) { let o = text; for (const w of BAD_WORDS) { const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'); o = o.replace(re, '*'.repeat(w.length)); } return o; }
 
     /* ════════════════════════════════════════
        CHAT — REFRESH AUTOMATICO
     ════════════════════════════════════════ */
+    /** Starts the automatic chat refresh countdown. */
     function startChatRefresh() {
       stopChatRefresh(); chatCountdownVal = 3; updateChatCountdownUI();
       chatCountdownTimer = setInterval(() => { chatCountdownVal--; if (chatCountdownVal <= 0) { chatCountdownVal = 3; fetchChatMessages(); } updateChatCountdownUI(); }, 1000);
     }
+    /** Stops the automatic chat refresh countdown. */
     function stopChatRefresh() { clearInterval(chatCountdownTimer); chatCountdownTimer = null; const sp = document.getElementById('chat-spin'); if (sp) sp.classList.add('d-none'); }
+    /** Updates the chat refresh countdown label. */
     function updateChatCountdownUI() { const el = document.getElementById('chat-countdown'); if (el) el.textContent = chatCountdownVal <= 0 ? 'aggiornamento…' : `aggiorna tra ${chatCountdownVal}s`; }
 
+    /** Loads the latest chat messages for the current match. */
     async function fetchChatMessages() {
       if (!gameId) return;
       const sp = document.getElementById('chat-spin'); if (sp) sp.classList.remove('d-none');
@@ -2322,6 +2475,7 @@
     /* ════════════════════════════════════════
        CHAT — SPUNTE (✓ ✓✓ blu)
     ════════════════════════════════════════ */
+    /** Sends a read receipt for the most recent rendered chat message. */
     async function sendReadReceipt() {
       if (!gameId || !myPid) return;
       try {
@@ -2331,11 +2485,13 @@
       } catch (_) { }
     }
 
+    /** Returns the latest read-receipt timestamp sent by the opponent. */
     function getOppLastRead(moves) {
       const reads = moves.filter(m => m.playerId === oppPid && m.data?.type === 'chat_read').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       return reads[0]?.data?.lastReadTs || null;
     }
 
+    /** Updates message receipt markers based on the opponent read state. */
     function updateReadReceipts(oppLastRead) {
       if (!oppLastRead) return;
       document.querySelectorAll('[data-tick]').forEach(el => {
@@ -2348,8 +2504,10 @@
     /* ════════════════════════════════════════
        CHAT — RENDER
     ════════════════════════════════════════ */
+    /** Scrolls the chat panel to the newest message. */
     function scrollChat() { const el = document.getElementById('chat-messages'); if (el) el.scrollTop = el.scrollHeight; }
 
+    /** Renders chat messages that have not yet been appended. */
     function renderChat(moves) {
       const oppLastRead = getOppLastRead(moves);
       const chatMoves = moves.filter(m => m.data?.type === 'chat' && m.data?.chat).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -2362,6 +2520,7 @@
       updateReadReceipts(oppLastRead);
     }
 
+    /** Appends a single chat bubble to the message list. */
     function appendChatBubble(chat, timestamp, msgId, oppLastRead) {
       const el = document.getElementById('chat-messages'); if (!el) return;
       if (msgId && document.querySelector(`[data-msg-id="${msgId}"]`)) return;
@@ -2391,6 +2550,7 @@
       if (activeSideTab === 'chat') scrollChat();
     }
 
+    /** Sends the current chat input value to the server. */
     async function sendChat() {
       const inp = document.getElementById('chat-input'); let text = (inp?.value || '').trim();
       if (!text || chatSending || !gameId || !myPid) return;
@@ -2406,8 +2566,10 @@
       } catch (e) { inp.value = orig; toast('Errore invio', 'err'); }
       finally { chatSending = false; if (btn) btn.disabled = false; inp?.focus(); }
     }
+    /** Sends a predefined quick-reply message. */
     function sendQuick(text) { const inp = document.getElementById('chat-input'); if (inp) { inp.value = text; sendChat(); } }
 
+    /** Attaches the chat input and send-button event handlers. */
     function initChat() {
       const input = document.getElementById('chat-input'); const btn = document.getElementById('btn-chat-send');
       if (!input || !btn) return;
