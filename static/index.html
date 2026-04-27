@@ -1119,6 +1119,8 @@
     const PLAYER_SESSION_STORAGE_KEY = 'bris_player_sessions';
     const QUEUE_GAME_STORAGE_KEY = 'bris_queue_game';
     const HISTORY_KEY = 'bris_history';
+    /** Change this before deployment if the API lives on another server. Leave empty to use the same host as this page. */
+    const API_BASE_URL = 'https://expert-winner-w645r76v6wx39rq-3000.app.github.dev';
     const CARD_THEMES = {
       napoletane: { label: 'Carte Napoletane', dir: 'carte_napoletane_nome_corretto' },
       bergamasche: { label: 'Carte Bergamasche', dir: 'carte_bergamasche_nome_corretto' }
@@ -1389,7 +1391,7 @@
     /* ════════════════════════════════════════
        APP STATE
     ════════════════════════════════════════ */
-    const INTERNAL_API_KEY = 'f9d64788-71e9-4b54-9d88-42c4005feaa91eab062d0cf54ddbaf3cd8c620293e29';
+    const INTERNAL_API_KEY = '3c02b828-c97d-4be9-8e94-24b244343e2395af6b75b0874665973c16739292000a';
     let apiKey = INTERNAL_API_KEY;
     let myName = getStoredDisplayName() || DEFAULT_PLAYER_NAME;
     let myIdentityName = getStoredIdentityName() || makePlayerIdentityName(myName);
@@ -1413,12 +1415,20 @@
     /* ════════════════════════════════════════
        API
     ════════════════════════════════════════ */
+    /** Builds the final API URL for a request path. */
+    function buildApiUrl(path) {
+      const rawPath = String(path || '');
+      if (/^https?:\/\//i.test(rawPath)) return rawPath;
+      const base = String(API_BASE_URL || '').trim().replace(/\/+$/, '');
+      if (!base) return rawPath;
+      return `${base}${rawPath.startsWith('/') ? rawPath : `/${rawPath}`}`;
+    }
     /** Performs an authenticated JSON request against the game API. */
     async function api(method, path, body, key) {
       const k = key || apiKey;
       const opts = { method, headers: { 'Content-Type': 'application/json', 'X-API-Key': k } };
       if (body) opts.body = JSON.stringify(body);
-      const r = await fetch(path, opts);
+      const r = await fetch(buildApiUrl(path), opts);
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
       return j;
