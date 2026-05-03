@@ -1653,18 +1653,22 @@
       if (!queueGameId || queueChecking) return; queueChecking = true;
       try {
         const matchedGameId = queueGameId;
-        const gd = await api('GET', `/games/${matchedGameId}`); const g = gd.game;
+        const gd = await api('GET', `/games/${matchedGameId}`); 
+        if (!queueTimer || queueGameId !== matchedGameId) return; // Abort if user cancelled during request
+        const g = gd.game;
         if (!g) throw new Error('Partita non trovata');
         if ((g.moves?.length || 0) <= 1) {
           if (await maybeSwitchToOlderQueue(g)) return;
+          if (!queueTimer || queueGameId !== matchedGameId) return; // Abort if user cancelled
           setQueueUI(true, 'Ricerca avversario casuale…'); return;
         }
         const s = await resolveSessionFromPlayers(matchedGameId);
+        if (!queueTimer || queueGameId !== matchedGameId) return; // Abort if user cancelled
         await markJoinedIfNeeded(matchedGameId, s.meId);
         stopQueueMatch(); toast('Avversario trovato!', 'ok');
         await openMatchedQueueGame(matchedGameId, s.meId, s.oppId, s.role);
-      } catch (e) { stopQueueMatch(); toast(e.message || 'Errore coda', 'err'); }
-      finally { if (queueTimer) queueChecking = false; }
+      } catch (e) { if (queueTimer) { stopQueueMatch(); toast(e.message || 'Errore coda', 'err'); } }
+      finally { queueChecking = false; }
     }
     /** Starts polling the matchmaking queue. */
     function startQueueWatcher() { clearInterval(queueTimer); queueTimer = setInterval(checkQueueMatch, 2500); }
@@ -1904,7 +1908,17 @@
           div.className = 'game-card d-flex justify-content-between align-items-center gap-2 flex-wrap p-3 mb-2';
           const badge = g.status === 'active' ? `<span class="badge text-bg-success">In corso</span>` : `<span class="badge text-bg-secondary">Finita</span>`;
           const resumeBtn = (g.name || '').startsWith('[Briscola]') && (g.players || []).length >= 2 ? `<button class="btn btn-success btn-sm" onclick="resumeGame('${g.id}')"><i class="bi bi-play-fill"></i> Riprendi</button>` : '';
-          div.innerHTML = `<div><div class="game-title">${esc(stripPlayerNameTagsFromText(g.name || 'Partita'))}</div><div class="game-meta">ID: ${g.id.slice(0, 10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${(g.players || []).length} | 🃏 ${(g.moves || []).length} mosse</div></div><div class="d-flex gap-2 align-items-center">${badge}${resumeBtn}</div>`;
+          
+          let displayTitle = stripPlayerNameTagsFromText(g.name || 'Partita');
+          const p1 = g.players?.[0] ? stripPlayerNameTagsFromText(g.players[0].name) : '';
+          const p2 = g.players?.[1] ? stripPlayerNameTagsFromText(g.players[1].name) : '';
+          if (p1 && p2 && displayTitle.includes('???') && !isWaitingPlayer(p1) && !isWaitingPlayer(p2)) {
+             const m = displayTitle.match(/^(\[Briscola\](?:\[.*?\])?)/);
+             const prefix = m ? m[1] : '[Briscola]';
+             displayTitle = `${prefix} ${p1} vs ${p2}`;
+          }
+
+          div.innerHTML = `<div><div class="game-title">${esc(displayTitle)}</div><div class="game-meta">ID: ${g.id.slice(0, 10)}… | ${new Date(g.createdAt).toLocaleString('it-IT')} | 👥 ${(g.players || []).length} | 🃏 ${(g.moves || []).length} mosse</div></div><div class="d-flex gap-2 align-items-center">${badge}${resumeBtn}</div>`;
           el.appendChild(div);
         }
       } catch (e) { el.innerHTML = `<span class="text-danger">${esc(e.message)}</span>`; }
