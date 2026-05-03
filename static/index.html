@@ -1130,7 +1130,7 @@
 
     const GHOST_ROOM_TTL_MS = 60 * 1000;
     const GHOST_CLEANUP_INTERVAL_MS = 15 * 1000;
-    const PRESENCE_HEARTBEAT_MS = 25 * 1000;
+    const PRESENCE_HEARTBEAT_MS = 5 * 1000;
     const TRICK_REVEAL_DELAY_MS = 3200;
     const PLAYER_INACTIVE_TIMEOUT_MS = 30 * 1000;
     const BOT_THINK_MIN_MS = 900;
@@ -1273,6 +1273,8 @@
       const seen = {};
       for (const m of (Array.isArray(moves) ? moves : [])) {
         const pid = m?.playerId; if (!pid) continue;
+        // Ignore simple heartbeats for inactivity countdown
+        if (m?.data?.type === 'presence') continue;
         const ms = tsMs(m?.timestamp); if (!Number.isFinite(ms)) continue;
         seen[pid] = Number.isFinite(seen[pid]) ? Math.max(seen[pid], ms) : ms;
       }
@@ -2245,7 +2247,22 @@
       if (gs.phase === 'finished') { msg = '🏁 Partita terminata!'; if (pi) pi.classList.add('d-none'); }
       else if (isOpponentBotActive() && gs.current === oppPid) { msg = '🤖 Il BOT sta pensando…'; if (pi) pi.classList.add('d-none'); }
       else if (isMyTurn()) { msg = gs.trick.length === 1 ? '🎴 Rispondi alla carta!' : '🎴 <strong>Tocca a te!</strong>'; if (pi) pi.classList.add('d-none'); }
-      else { msg = '⏳ In attesa dell\'avversario…'; if (pi) pi.classList.remove('d-none'); }
+      else {
+        const oppLastMs = lastSeenByPlayer[oppPid] || 0;
+        const startMs = Math.max(oppLastMs, opponentInactivityResetAtMs || 0);
+        let countdownHtml = '';
+        if (startMs > 0) {
+          const elapsed = Date.now() - startMs;
+          const remaining = Math.max(0, Math.ceil((PLAYER_INACTIVE_TIMEOUT_MS - elapsed) / 1000));
+          if (remaining <= 10) {
+            countdownHtml = ` <span class="text-danger fw-bold">(Bot tra ${remaining}s)</span>`;
+          } else {
+            countdownHtml = ` <small class="text-secondary">(${remaining}s)</small>`;
+          }
+        }
+        msg = `⏳ In attesa dell'avversario…${countdownHtml}`;
+        if (pi) pi.classList.remove('d-none');
+      }
       document.getElementById('status-msg').innerHTML = msg;
     }
 
