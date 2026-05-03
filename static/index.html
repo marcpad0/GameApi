@@ -1753,13 +1753,13 @@
     /** Checks whether a placeholder waiting-player name is being used. */
     function isWaitingPlayer(n) { return normPlayerName(n).startsWith('in attesa'); }
     /** Checks whether a game can be joined as a waiting queue room. */
-    function isQueueJoinable(g) { 
-      if (!g || g.status === 'finished') return false; 
-      if (!(g.name || '').startsWith('[Briscola][Queue]')) return false; 
-      const p = g.players || []; 
-      if (p.length < 2) return false; 
-      if (!p.some(x => isWaitingPlayer(x.name))) return false; 
-      return (g.moves?.length || 0) <= 1; 
+    function isQueueJoinable(g) {
+      if (!g || g.status === 'finished') return false;
+      if (!(g.name || '').startsWith('[Briscola][Queue]')) return false;
+      const p = g.players || [];
+      if (p.length < 2) return false;
+      if (!p.some(x => isWaitingPlayer(x.name))) return false;
+      return (g.moves?.length || 0) <= 1;
     }
     /** Extracts both display names from a formatted game title. */
     function parseGameNameSides(name) {
@@ -1890,7 +1890,12 @@
         const d = await api('GET', '/games');
         const games = Array.isArray(d.games) ? d.games : [];
         const deletedIds = await cleanupExpiredGhostRooms(games, true);
-        const list = games.filter(g => g && g.status !== 'finished' && !deletedIds.has(g.id) && (g.players || []).length > 0);
+        const myIdentityStr = normPlayerIdentityName(getMyIdentityName());
+        const isMyGame = (g) => {
+          if (getSavedPlayerSession(g.id)) return true;
+          return (g.players || []).some(p => normPlayerIdentityName(p.name) === myIdentityStr);
+        };
+        const list = games.filter(g => g && g.status !== 'finished' && !deletedIds.has(g.id) && (g.players || []).length > 0 && isMyGame(g));
         if (!list.length) { el.innerHTML = '<em class="text-secondary">Nessuna partita attiva.</em>'; return; }
         list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         el.innerHTML = '';
