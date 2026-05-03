@@ -1120,7 +1120,7 @@
     const QUEUE_GAME_STORAGE_KEY = 'bris_queue_game';
     const HISTORY_KEY = 'bris_history';
     /** Change this before deployment if the API lives on another server. Leave empty to use the same host as this page. */
-    const API_BASE_URL = 'https://orange-space-dollop-66p59g6vjpwf4q4v-3000.app.github.dev';
+    const API_BASE_URL = 'http://localhost:3000';
     const CARD_THEMES = {
       napoletane: { label: 'Carte Napoletane', dir: 'carte_napoletane_nome_corretto' },
       bergamasche: { label: 'Carte Bergamasche', dir: 'carte_bergamasche_nome_corretto' }
@@ -1268,17 +1268,17 @@
       return sc(c2) > sc(c1) ? 1 : 0;
     }
 
-    /** Collects the latest activity timestamp for each player. */
-    function collectLastSeenByPlayer(moves) {
-      const seen = {};
+    /** Collects when each player's current turn started from persisted game-state moves. */
+    function collectTurnStartedAtByPlayer(moves) {
+      const startedAt = {};
       for (const m of (Array.isArray(moves) ? moves : [])) {
-        const pid = m?.playerId; if (!pid) continue;
-        // Ignore simple heartbeats for inactivity countdown
-        if (m?.data?.type === 'presence') continue;
+        const state = m?.data?.state;
+        const current = state?.phase === 'playing' ? state.current : null;
+        if (!current) continue;
         const ms = tsMs(m?.timestamp); if (!Number.isFinite(ms)) continue;
-        seen[pid] = Number.isFinite(seen[pid]) ? Math.max(seen[pid], ms) : ms;
+        startedAt[current] = Number.isFinite(startedAt[current]) ? Math.max(startedAt[current], ms) : ms;
       }
-      return seen;
+      return startedAt;
     }
 
     /** Returns the lockout map from the current game state. */
@@ -1407,9 +1407,9 @@
     // Bot / presence
     let ghostCleanupTimer = null, ghostCleanupRunning = false;
     let presenceTimer = null, presenceInFlight = false;
-    let lastSeenByPlayer = {};
+    let turnStartedAtByPlayer = {};
     let botThinking = false, playPrecheckInFlight = false;
-    let opponentInactivityResetAtMs = 0, pageWasHidden = false;
+    let pageWasHidden = false;
     // Chat
     let sentMessageIds = new Set(), renderedChatTs = new Set(), unreadChatCount = 0, chatSending = false;
     let chatCountdownTimer = null, chatCountdownVal = 3, activeSideTab = 'log';
@@ -1567,8 +1567,6 @@
       toast('Sei rimasto assente: non puoi rientrare in questa partita.', 'err');
       goLobby(); return true;
     }
-    /** Resets the inactivity timer used for bot takeover. */
-    function resetOpponentInactivityCountdown() { opponentInactivityResetAtMs = Date.now(); }
     /** Checks whether the game screen is currently visible. */
     function isGameScreenActive() { const s = document.getElementById('screen-game'); return !!s && s.classList.contains('active'); }
 
@@ -1586,12 +1584,12 @@
     /** Pauses timers when the page is hidden and resynchronizes when it returns. */
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { pageWasHidden = true; stopPoll(); stopPresenceHeartbeat(); return; }
-      if (pageWasHidden) { resetOpponentInactivityCountdown(); pageWasHidden = false; }
+      pageWasHidden = false;
       runGhostCleanupWatcherTick(); resyncGameAfterVisibilityRestore();
     });
     /** Resynchronizes the client after the window regains focus. */
     window.addEventListener('focus', () => {
-      if (pageWasHidden && !document.hidden) { resetOpponentInactivityCountdown(); pageWasHidden = false; }
+      if (pageWasHidden && !document.hidden) pageWasHidden = false;
       runGhostCleanupWatcherTick(); resyncGameAfterVisibilityRestore();
     });
     /** Stops active timers before the page unloads. */
@@ -1955,11 +1953,11 @@
     /** Initializes local state and opens an active match. */
     async function startGameSession(gid, myPidVal, oppPidVal, role) {
       rememberPlayerSession(gid, myPidVal, role, myName);
-      gameId = gid; myPid = myPidVal; oppPid = oppPidVal; myRole = role; posting = false; botThinking = false; lastSeenByPlayer = {};
+      gameId = gid; myPid = myPidVal; oppPid = oppPidVal; myRole = role; posting = false; botThinking = false; turnStartedAtByPlayer = {};
       document.getElementById('hdr-game').innerHTML = `Partita: <span style="cursor:pointer;" onclick="copyMatchId()" title="Copia ID Partita">${gid.slice(0, 10)}… <i class="bi bi-clipboard"></i></span>`;
       const ok = await waitForInitialGameState(); if (!ok) return false;
       if (enforceCurrentPlayerLockout()) return false;
-      resetOpponentInactivityCountdown(); pageWasHidden = false;
+      pageWasHidden = false;
       document.getElementById('winner-overlay').classList.remove('show');
       showScreen('game'); renderBoard(); startPoll();
       if (gs.phase === 'playing') startPresenceHeartbeat();
@@ -1975,7 +1973,7 @@
         const md = await api('GET', `/games/${gameId}/moves`);
         if (!md.moves.length) { if (!silent) toast('Stato non trovato', 'err'); return false; }
         const moves = [...md.moves].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        lastSeenByPlayer = collectLastSeenByPlayer(moves);
+        turnStartedAtByPlayer = collectTurnStartedAtByPlayer(moves);
         const latestMove = [...moves].reverse().find(m => m?.data?.state && m?.data?.type !== 'presence' && m?.data?.type !== 'chat' && m?.data?.type !== 'chat_read');
         if (!latestMove) { if (!silent) toast('Stato non valido', 'err'); return false; }
         gs = latestMove.data.state; ensureRuntimeStateShape();
@@ -2047,16 +2045,15 @@
       if (!gs || gs.phase !== 'playing' || !myPid || !oppPid) return false;
       if (gs.current !== oppPid) return false;
       if (isLockedOutPlayer(myPid) || isLockedOutPlayer(oppPid) || isOpponentBotActive()) return false;
-      const oppLastMs = lastSeenByPlayer[oppPid] || 0;
-      const startMs = Math.max(oppLastMs, opponentInactivityResetAtMs || 0);
+      const startMs = turnStartedAtByPlayer[oppPid] || 0;
       if (startMs === 0) return false;
       if (Date.now() - startMs < PLAYER_INACTIVE_TIMEOUT_MS) return false;
       ensureRuntimeStateShape();
       const nowIso = new Date().toISOString();
       gs.lockedOutPlayers = { ...getLockedOutPlayers(gs), [oppPid]: { at: nowIso, reason: 'inactive_timeout' } };
       gs.bot = { enabled: true, replacedPid: oppPid, controllerPid: myPid, activatedAt: nowIso };
-      await persist('bot_takeover', `Avversario assente: entra il BOT`);
-      renderBoard(); toast('Avversario assente: ora giochi contro il BOT.', 'info');
+      await persist('bot_takeover', `Avversario espulso per inattività: entra il BOT`);
+      renderBoard(); toast('Avversario espulso per inattività: ora giochi contro il BOT.', 'info');
       return true;
     }
     /** Lets the bot play when it controls the current turn. */
@@ -2149,7 +2146,12 @@
     }
 
     /** Persists the current game state as a move for a specific player. */
-    async function persistAs(pid, type, desc) { await api('POST', `/games/${gameId}/moves`, { playerId: pid, data: { type, description: desc, state: gs } }); }
+    async function persistAs(pid, type, desc) {
+      const result = await api('POST', `/games/${gameId}/moves`, { playerId: pid, data: { type, description: desc, state: gs } });
+      const ms = tsMs(result?.move?.timestamp);
+      if (gs?.phase === 'playing' && gs.current && Number.isFinite(ms)) turnStartedAtByPlayer[gs.current] = ms;
+      return result.move;
+    }
     /** Persists the current game state as a move for the local player. */
     async function persist(type, desc) { await persistAs(myPid, type, desc); }
 
@@ -2248,8 +2250,7 @@
       else if (isOpponentBotActive() && gs.current === oppPid) { msg = '🤖 Il BOT sta pensando…'; if (pi) pi.classList.add('d-none'); }
       else if (isMyTurn()) { msg = gs.trick.length === 1 ? '🎴 Rispondi alla carta!' : '🎴 <strong>Tocca a te!</strong>'; if (pi) pi.classList.add('d-none'); }
       else {
-        const oppLastMs = lastSeenByPlayer[oppPid] || 0;
-        const startMs = Math.max(oppLastMs, opponentInactivityResetAtMs || 0);
+        const startMs = turnStartedAtByPlayer[oppPid] || 0;
         let countdownHtml = '';
         if (startMs > 0) {
           const elapsed = Date.now() - startMs;
@@ -2481,7 +2482,7 @@
     /** Resets runtime match state and returns to the lobby. */
     function goLobby() {
       stopPoll(); stopQueueMatch(); stopPresenceHeartbeat(); stopChatRefresh(); stopRematchPoll();
-      botThinking = false; lastSeenByPlayer = {}; opponentInactivityResetAtMs = 0; pageWasHidden = false;
+      botThinking = false; turnStartedAtByPlayer = {}; pageWasHidden = false;
       gameId = null; myPid = null; oppPid = null; gs = null; pendingInvite = null; playLock = false; playPrecheckInFlight = false;
       activeSideTab = 'log'; renderedChatTs.clear();
       const chatMsgs = document.getElementById('chat-messages');

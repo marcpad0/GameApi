@@ -10,7 +10,7 @@ const options = {
     },
     servers: [
       {
-        url: 'https://orange-space-dollop-66p59g6vjpwf4q4v-3000.app.github.dev/',
+        url: 'http://localhost:3000/',
         description: 'Development server'
       }
     ],
