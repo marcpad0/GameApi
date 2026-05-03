@@ -1958,6 +1958,7 @@
       const ok = await waitForInitialGameState(); if (!ok) return false;
       if (enforceCurrentPlayerLockout()) return false;
       resetOpponentInactivityCountdown(); pageWasHidden = false;
+      document.getElementById('winner-overlay').classList.remove('show');
       showScreen('game'); renderBoard(); startPoll();
       if (gs.phase === 'playing') startPresenceHeartbeat();
       await maybeActivateBotForInactiveOpponent(); await maybeBotPlayTurn();
@@ -2292,6 +2293,8 @@
     <div class="stat-box"><div class="sv">${gs.round || 0}</div><div class="sl">Manche giocate</div></div>
     <div class="stat-box" style="grid-column:1/-1"><div class="sv" style="font-size:1rem">${lbl(myBest)} (${cardPts(myBest)} pt)</div><div class="sl">Carta più preziosa presa</div></div>`;
 
+      const rmBtn = document.querySelector("#winner-overlay .btn-gold");
+      if (rmBtn) rmBtn.disabled = false;
       document.getElementById('winner-overlay').classList.add('show');
       document.getElementById('briscola-indicator').classList.remove('show');
     }
@@ -2310,7 +2313,14 @@
       const oldGameId = finishedGameId || gameId;
       const oldMyPid = finishedMyPid || myPid;
       const oldOppPid = finishedOppPid || oppPid;
-      document.getElementById('winner-overlay').classList.remove('show');
+      
+      const titleEl = document.getElementById("winner-title");
+      if (titleEl) titleEl.innerHTML += " ⏳";
+      const msgEl = document.getElementById("winner-msg");
+      if (msgEl) msgEl.innerHTML = "In attesa dell'avversario per la rivincita... <span class='spinner-sm d-inline-block ms-2'></span>";
+      const rmBtn = document.querySelector("#winner-overlay .btn-gold");
+      if (rmBtn) rmBtn.disabled = true;
+
       toast('Cerco rivincita…', 'info');
       try {
         await assertDisplayNameAvailable(myName);
@@ -2351,20 +2361,16 @@
         }
 
         pendingInvite = { gameId: gid, p1id: r1.player.id, p2id: r2.player.id };
-        const base = location.href.split('?')[0];
-        const token = makeInviteToken({ join: gid, p1id: r1.player.id, p2id: r2.player.id, as: 'p2' });
-        const link = `${base}?invite=${token}`;
-        await navigator.clipboard.writeText(link).catch(() => { });
 
-        goLobby();
-        document.getElementById('invite-link').value = link;
-        document.getElementById('invite-box').style.display = 'block';
-        toast('Rivincita creata! In attesa dell\'avversario… (link copiato) 🔗', 'ok');
+        toast('Rivincita creata! In attesa dell\'avversario…', 'ok');
 
         // Step 4: Poll the new game waiting for opponent to join, also re-check for conflicts
         startRematchPoll(gid, oldGameId, oldMyPid);
 
-      } catch (e) { toast(e.message, 'err'); }
+      } catch (e) {
+        toast(e.message, 'err');
+        goLobby();
+      }
       finally { rematchInProgress = false; }
     }
 
