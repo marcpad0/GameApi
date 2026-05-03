@@ -10,7 +10,7 @@ const options = {
     },
     servers: [
       {
-        url: 'https://fluffy-sniffle-x9r9jvjx76g36jxr-3000.app.github.dev/',
+        url: 'https://orange-space-dollop-66p59g6vjpwf4q4v-3000.app.github.dev/',
         description: 'Development server'
       }
     ],

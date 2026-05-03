@@ -1120,7 +1120,7 @@
     const QUEUE_GAME_STORAGE_KEY = 'bris_queue_game';
     const HISTORY_KEY = 'bris_history';
     /** Change this before deployment if the API lives on another server. Leave empty to use the same host as this page. */
-    const API_BASE_URL = 'https://expert-winner-w645r76v6wx39rq-3000.app.github.dev';
+    const API_BASE_URL = 'https://orange-space-dollop-66p59g6vjpwf4q4v-3000.app.github.dev';
     const CARD_THEMES = {
       napoletane: { label: 'Carte Napoletane', dir: 'carte_napoletane_nome_corretto' },
       bergamasche: { label: 'Carte Bergamasche', dir: 'carte_bergamasche_nome_corretto' }
@@ -1391,7 +1391,7 @@
     /* ════════════════════════════════════════
        APP STATE
     ════════════════════════════════════════ */
-    const INTERNAL_API_KEY = '3c02b828-c97d-4be9-8e94-24b244343e2395af6b75b0874665973c16739292000a';
+    const INTERNAL_API_KEY = '5d70f2b0-9e1e-4e28-8e14-5b0427114759136b7b959479487b997302de266bfe89';
     let apiKey = INTERNAL_API_KEY;
     let myName = getStoredDisplayName() || DEFAULT_PLAYER_NAME;
     let myIdentityName = getStoredIdentityName() || makePlayerIdentityName(myName);
@@ -1753,7 +1753,14 @@
     /** Checks whether a placeholder waiting-player name is being used. */
     function isWaitingPlayer(n) { return normPlayerName(n).startsWith('in attesa'); }
     /** Checks whether a game can be joined as a waiting queue room. */
-    function isQueueJoinable(g) { if (!g || g.status === 'finished') return false; if (!(g.name || '').startsWith('[Briscola][Queue]')) return false; const p = g.players || []; if (p.length < 2) return false; if (!p.some(x => isWaitingPlayer(x.name))) return false; return (g.moves?.length || 0) <= 1; }
+    function isQueueJoinable(g) { 
+      if (!g || g.status === 'finished') return false; 
+      if (!(g.name || '').startsWith('[Briscola][Queue]')) return false; 
+      const p = g.players || []; 
+      if (p.length < 2) return false; 
+      if (!p.some(x => isWaitingPlayer(x.name))) return false; 
+      return (g.moves?.length || 0) <= 1; 
+    }
     /** Extracts both display names from a formatted game title. */
     function parseGameNameSides(name) {
       const match = /^\[Briscola\](?:\[(?:Queue|Private)\])?\s*(.*?)\s+vs\s+(.*)$/.exec(String(name || '').trim());
