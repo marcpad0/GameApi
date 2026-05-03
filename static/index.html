@@ -1981,7 +1981,16 @@
         return true;
       } catch (e) {
         const msg = (e?.message || '').toLowerCase();
-        if (msg.includes('game not found')) { if (!silent) { toast('Partita chiusa.', 'info'); goLobby(); } return false; }
+        if (msg.includes('game not found')) { 
+          if (!silent) { 
+            toast('L\'avversario ha abbandonato! Hai vinto a tavolino 🏆', 'ok'); 
+            if (gs && gs.phase !== 'finished') {
+               addToHistory('win', gs.scores[myPid] || 0, gs.scores[oppPid] || 0, oppNameResolved, gs.round || 0);
+            }
+            goLobby(); 
+          } 
+          return false; 
+        }
         if (!silent) toast(e.message, 'err');
         return false;
       }
