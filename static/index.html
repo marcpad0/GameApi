@@ -1828,7 +1828,12 @@
       const gid = inv?.join; if (!gid) { toast('Link non valido', 'err'); showScreen('lobby'); return; }
       useInternalAuth();
       try { await assertDisplayNameAvailable(myName); } catch (e) { toast(e.message || 'Nome non valido', 'err'); showScreen('lobby'); return; }
-      try { await api('PUT', `/games/${gid}`, { name: `[Briscola] ??? vs ${myName}` }); } catch (_) { }
+      try { 
+        const existing = await api('GET', `/games/${gid}`);
+        const currentName = existing?.game?.name || `[Briscola] ??? vs ${myName}`;
+        const newName = currentName.includes('???') ? currentName.replace('???', myName) : currentName;
+        await api('PUT', `/games/${gid}`, { name: newName }); 
+      } catch (_) { }
       try {
         const s = await resolveSessionFromPlayers(gid);
         await markJoinedIfNeeded(gid, s.meId);
@@ -2406,7 +2411,12 @@
     /** Joins an already-created rematch room. */
     async function joinRematchGame(rematchGid) {
       try {
-        try { await api('PUT', `/games/${rematchGid}`, { name: `[Briscola][Rematch] ??? vs ${myName}` }); } catch (_) { }
+        try { 
+          const existing = await api('GET', `/games/${rematchGid}`);
+          const currentName = existing?.game?.name || `[Briscola][Rematch] ??? vs ${myName}`;
+          const newName = currentName.includes('???') ? currentName.replace('???', myName) : currentName;
+          await api('PUT', `/games/${rematchGid}`, { name: newName }); 
+        } catch (_) { }
         const s = await resolveSessionFromPlayers(rematchGid);
         await markJoinedIfNeeded(rematchGid, s.meId);
         await startGameSession(rematchGid, s.meId, s.oppId, s.role);
